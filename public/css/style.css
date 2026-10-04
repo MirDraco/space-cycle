@@ -1,0 +1,45 @@
+* {
+     margin: 0;
+     padding: 0;
+     box-sizing: border-box;
+}
+
+header {
+     height: 56px;
+     width: 100%;
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     padding: 0 16px;
+     background-color: #EEF4ED;
+     font-size: 25px;
+     font-weight: bolder;
+}
+
+/* CSS 속성으로 <a> 태그 밑줄 지우기, 파란색 지우기 */
+/* 글 스타일 변경 */
+#link-non-color {
+     text-decoration: none;
+     color: inherit;
+}
+
+.bottom-nav {
+     height: 60px;
+     width: 100%;
+     padding: 0 16px;
+     display: flex;
+     gap: 20px;
+     align-items: center;
+     justify-content: space-around;
+     font-size: 25px;
+     font-weight: bolder;
+     /* 바닥에 고정 */
+     position: fixed;
+     bottom: 0;
+     left: 0;
+     right: 0;
+     /* 디자인 */
+     background-color: #0B2545;
+     color: #ffffff;
+     border-top: 1px solid #13315C;
+}
