@@ -1,0 +1,13 @@
+#main{
+    position: relative;
+    z-index: 1; /*레이어 순서를 올리는 것*/
+    text-align: center;
+    padding: 40px 30px;
+    max-width: 700px;
+    max-height: 500px;
+    margin: 0 auto;
+}
+
+.first-main{
+    font-weight: 700;
+}
