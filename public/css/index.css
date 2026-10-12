@@ -1,13 +1,68 @@
 #main{
-    position: relative;
+    position: fixed;
     z-index: 1; /*레이어 순서를 올리는 것*/
     text-align: center;
     padding: 40px 30px;
     max-width: 700px;
     max-height: 500px;
     margin: 0 auto;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(100% - 32px);
 }
 
 .first-main{
-    font-weight: 700;
+    font-weight: 800;
+    margin: 20px 10px;
+    font-size: 32px;
+}
+
+.second-sub{
+    margin-bottom: 20px;
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--muted);
+}
+
+.third-btn{
+    margin-bottom: 40px;
+    display: inline-grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    max-width: 100%;
+    justify-content: center;
+}
+.in-first-btn{
+    padding: 12px 15px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-end));
+    color: var(--primary-text);
+    box-shadow: 0 8px 24px var(--shadow);
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap; /* 버튼 안의 텍스트 줄 바꿈 막기 */
+}
+
+.in-second-btn{
+    padding: 12px 15px;
+    background: var(--secondary);
+    color: var(--secondary-text);
+    box-shadow: 0 8px 24px var(--shadow);
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap; /* 버튼 안의 텍스트 줄 바꿈 막기 */
+}
+
+.third-btn a{
+    text-decoration: none;
+}
+
+@media (max-width: 380px){
+    #main{
+        padding-inline: 12px;
+    }
+
+    .first-main{
+        font-size: 28px;
+    }
 }

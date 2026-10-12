@@ -6,6 +6,8 @@
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"/>
     <link rel="icon" type="image/x-icon" href="/images/rounded-favicon_32.png">
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <script src="/js/theme.js"></script>
     <title>Space Cycle</title>
 </head>
 <!-- body 시작 -->
@@ -21,16 +23,23 @@
     </header>
     <!-- 메인 공간 -->
     <main>
-        <link rel="stylesheet" href="/css/index.css">
         <div id="main">
             <h1 class="first-main">SPACE CYCLE</h1>
             <p class="second-sub">잠든 공간의 재발견</p>
+            <div class="third-btn">
+                <a href="/" class="in-first-btn">공간 보기<span class="fv-btn-arrow">→</span></a>
+                <a href="/" class="in-second-btn">내 뱃지 보기<span class="fv-btn-arrow">→</span></a>
+            </div>
         </div>
     </main>
     <!-- 내비게이션 바 공간 -->
     <nav class="bottom-nav">
-        <a href="" id="link-non-color">Home</a>
+        <a href="" id="link-non-color" aria-current="page">Home</a>
         <a href="" id="link-non-color">User</a>
+        <label class="theme-switch" title="다크 테마 전환">
+            <span>다크 테마</span>
+            <input type="checkbox" id="theme-toggle" role="switch" aria-label="다크 테마">
+        </label>
     </nav>
 </body>
 <!-- body 끝 -->
