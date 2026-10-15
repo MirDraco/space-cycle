@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/index.css">
     <script src="/js/theme.js"></script>
+    <script type="module" src="/js/auth.js"></script>
     <title>Space Cycle</title>
 </head>
 <!-- body 시작 -->
@@ -18,11 +19,11 @@
             <p>SPACE CYCLE</p>
         </div>
         <div>
-            <a href="/login" id="link-non-color" class="btn">LOGIN</a>
+            <a href="/login" id="link-non-color" class="btn" data-auth-link>LOGIN</a>
         </div>
     </header>
     <!-- 메인 공간 -->
-    <main>
+    <main class="home-main">
         <div id="main">
             <h1 class="first-main">SPACE CYCLE</h1>
             <p class="second-sub">잠든 공간의 재발견</p>
@@ -30,6 +31,21 @@
                 <a href="/" class="in-first-btn">공간 보기<span class="fv-btn-arrow">→</span></a>
                 <a href="/" class="in-second-btn">내 뱃지 보기<span class="fv-btn-arrow">→</span></a>
             </div>
+            <p id="user-greeting" hidden aria-live="polite"></p>
+            <dl class="space-stats">
+                <div class="space-stat">
+                    <dt>실내 스페이스</dt>
+                    <dd>12+</dd>
+                </div>
+                <div class="space-stat">
+                    <dt>야외 스페이스</dt>
+                    <dd>8+</dd>
+                </div>
+                <div class="space-stat">
+                    <dt>내가 찾은 스페이스</dt>
+                    <dd id="found-space-count">—</dd>
+                </div>
+            </dl>
         </div>
     </main>
     <!-- 내비게이션 바 공간 -->
