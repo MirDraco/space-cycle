@@ -3,7 +3,7 @@ const root=path.resolve(__dirname,'..');
 function harness(){
  let time=100000,emit,startCalls=0,stops=0,refreshes=0,active=false;
  const intervals=new Map(),handlers=new Map(),elements=new Map();let id=0;
- for(const name of ['visit-status','visit-start','visit-stop','visit-timer','visit-progress','visit-distance','visit-accuracy','visit-freshness','visit-login','visit-name','visit-condition','visit-back','visit-reload','visit-build']){
+ for(const name of ['visit-status','visit-start','visit-stop','visit-timer','visit-progress','visit-distance','visit-accuracy','visit-freshness','visit-login','visit-name','visit-condition','visit-back','visit-reload','visit-build','visit-diagnostics']){
   const listeners={};elements.set(name,{textContent:'',hidden:false,disabled:false,dataset:{},value:0,max:60000,href:'',addEventListener:(event,fn)=>listeners[event]=fn,click:()=>listeners.click?.(),setAttribute(){},removeAttribute(){}});
  }
  const document={hidden:false,getElementById:n=>elements.get(n)||null,querySelector:()=>({content:'fixture-build'}),addEventListener:(n,f)=>handlers.set('document:'+n,f)};
@@ -55,6 +55,20 @@ test('short GPS retries pause projection without zeroing confirmed progress or a
  assert.match(h.elements.get('visit-freshness').textContent,/재확인 중.*확인값/,'retry copy must not call paused confirmed progress an estimate');
  h.sample({phase:'dwelling',active:true,elapsedMs:31000,locationPending:false});h.advance(1000);
  assert.equal(h.elements.get('visit-timer').textContent,'00:28','a real server confirmation resumes projection');
+});
+
+test('safe local GPS diagnostics explain old fixes without coordinates, raw timestamps or private errors',()=>{
+ const h=harness();h.elements.get('visit-start').click();
+ h.sample({phase:'dwelling',active:true,elapsedMs:20000,locationPending:true,locationIssue:{code:'gps_stale',fixAgeMs:5300,requestMs:6200,latitude:36.7,longitude:126.9}});
+ assert.match(h.elements.get('visit-build').textContent,/gps_stale/);
+ assert.match(h.elements.get('visit-diagnostics').textContent,/5\.3초/);
+ assert.match(h.elements.get('visit-diagnostics').textContent,/6\.2초/);
+ assert.doesNotMatch(h.elements.get('visit-diagnostics').textContent,/36\.7|126\.9/);
+ h.sample({phase:'error',active:false,errorCode:'location_gap',locationIssue:{code:'gps_duplicate',fixAgeMs:3000,requestMs:0}});
+ assert.match(h.elements.get('visit-build').textContent,/location_gap.*gps_duplicate/,'deadline keeps the reason that prevented fresh updates');
+ h.sample({phase:'dwelling',active:true,locationIssue:null,locationSample:{fixAgeMs:100,requestMs:300}});
+ assert.doesNotMatch(h.elements.get('visit-build').textContent,/gps_stale|gps_duplicate/);
+ assert.match(h.elements.get('visit-diagnostics').textContent,/0\.1초/);
 });
 
 test('delayed watchdog cannot let an unconfirmed estimate run indefinitely',()=>{

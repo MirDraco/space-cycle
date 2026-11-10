@@ -21,7 +21,7 @@ function assessPosition(space, sample) {
     const lonDelta = radians(longitude - space.longitude);
     const a = Math.sin(latDelta / 2) ** 2 + Math.cos(radians(space.latitude)) * Math.cos(radians(latitude)) * Math.sin(lonDelta / 2) ** 2;
     const distanceM = 6371000 * 2 * Math.atan2(Math.sqrt(Math.min(1, a)), Math.sqrt(Math.max(0, 1 - a)));
-    // No enlarged radius: count only if the reported accuracy circle fits inside 100m.
+    // Count only if the accuracy circle fits inside the owner's configured radius.
     const phase = distanceM > space.radiusM ? 'outside'
         : accuracy > space.maxAccuracyM || distanceM + accuracy > space.radiusM ? 'uncertain' : 'inside';
     return { phase, distanceM, accuracyM: accuracy };

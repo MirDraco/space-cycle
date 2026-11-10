@@ -63,5 +63,7 @@ test('permission denial and unavailable GPS fail closed instead of counting time
 test('a stale GPS fix is rejected instead of being resent as a fresh heartbeat', async () => {
     const x=setup();x.controller.start();await tick();
     x.gps.ok({coords:{latitude:36.7678561856971,longitude:126.933492079991,accuracy:5},timestamp:1});await tick();
-    assert.equal(x.states.at(-1).phase,'error');assert.equal(x.states.at(-1).elapsedMs,0);
+    assert.equal(x.states.at(-1).phase,'locating');assert.equal(x.states.at(-1).elapsedMs,0);
+    assert.equal(x.states.at(-1).locationIssue.code,'gps_stale');
+    await x.advance(30000);assert.equal(x.states.at(-1).phase,'error');
 });

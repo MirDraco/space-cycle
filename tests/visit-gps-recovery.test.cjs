@@ -119,9 +119,85 @@ test('a recovered but stale GPS fix is never reused as a fresh sample', async ()
     await h.advance(3000); await h.advance(6000); h.fixes.at(-1).error({ code: 3 }); await flush();
     await h.advance(250); const count = h.samples.length;
     h.fix(h.fixes.at(-1), h.time - 5000); await flush();
-    assert.equal(h.session.isActive(), false);
-    assert.equal(h.states.at(-1).elapsedMs, 0);
+    assert.equal(h.session.isActive(), true, 'stale results are skipped rather than immediately cancelling');
+    assert.equal(h.states.at(-1).locationIssue.code, 'gps_stale');
     assert.equal(h.samples.length, count);
+    await h.advance(2750);
+    assert.equal(h.session.isActive(), false, 'stale data cannot extend the original continuity deadline');
+    assert.equal(h.states.at(-1).errorCode, 'location_gap');
+    assert.equal(h.states.at(-1).locationIssue.code, 'gps_stale', 'failure keeps the last safe diagnostic');
+    assert.equal(h.states.at(-1).elapsedMs, 0);
+});
+
+test('an old returned fix is skipped and a fresh follow-up continues the same stay', async () => {
+    const h = harness(); await h.session.start(); h.fix(); await flush();
+    await h.advance(3000); h.fix(); await flush();
+    const confirmed = h.states.at(-1); await h.advance(3000);
+    h.fix(h.fixes.at(-1), h.time - 5000); await flush();
+    assert.equal(h.session.isActive(), true, 'one old device result must not cancel an otherwise valid stay');
+    assert.equal(h.samples.length, 2, 'old location must not be sent as a fresh heartbeat');
+    assert.equal(h.states.at(-1).locationPending, true);
+    assert.equal(h.states.at(-1).confirmedAt, confirmed.confirmedAt);
+    assert.equal(h.states.at(-1).locationIssue.code, 'gps_stale');
+    assert.equal(h.states.at(-1).locationIssue.fixAgeMs, 5000);
+    await h.advance(250); h.fix(); await flush();
+    assert.equal(h.states.at(-1).phase, 'dwelling');
+    assert.equal(h.states.at(-1).elapsedMs, 6250);
+    assert.equal(h.states.at(-1).locationPending, false);
+    assert.equal(h.samples.at(-1).result.reason, null);
+    h.session.stop(); await flush();
+});
+
+test('a repeated timestamp is skipped, while unchanged coordinates with a new timestamp are accepted', async () => {
+    const h = harness(); await h.session.start(); h.fix(); await flush();
+    const firstTime = h.time; await h.advance(3000); h.fix(h.fixes.at(-1), firstTime); await flush();
+    assert.equal(h.session.isActive(), true);
+    assert.equal(h.states.at(-1).locationIssue.code, 'gps_duplicate');
+    assert.equal(h.samples.length, 1);
+    await h.advance(250); h.fix(); await flush();
+    assert.equal(h.samples.length, 2);
+    assert.equal(h.states.at(-1).elapsedMs, 3250);
+    assert.equal(h.states.at(-1).locationIssue, null);
+    h.session.stop(); await flush();
+});
+
+test('state listeners cannot overwrite the stored safe diagnostic', async () => {
+    const h = harness(); await h.session.start(); h.fix(); await flush();
+    const first = h.time; await h.advance(3000); h.fix(h.fixes.at(-1), first); await flush();
+    h.states.at(-1).locationIssue.code = 'changed-by-listener';
+    await h.advance(12000);
+    assert.equal(h.session.isActive(), false);
+    assert.equal(h.states.at(-1).locationIssue.code, 'gps_duplicate');
+});
+
+test('invalid or future device timestamps never submit and retries do not extend initial acquisition', async () => {
+    for (const [value, code] of [[NaN, 'gps_invalid_timestamp'], [105000, 'gps_clock']]) {
+        const h = harness(); await h.session.start(); h.fix(h.fixes.at(-1), value); await flush();
+        assert.equal(h.samples.length, 0);
+        assert.equal(h.states.at(-1).locationIssue.code, code);
+        assert.equal(h.states.at(-1).locationPending, true);
+        assert.equal(h.session.isActive(), true);
+        await h.advance(30000);
+        assert.equal(h.session.isActive(), false);
+        assert.equal(h.states.at(-1).errorCode, 'location_timeout');
+        assert.equal(h.states.at(-1).locationIssue.code, code);
+    }
+});
+
+test('old or repeated device responses cannot prolong a stay indefinitely or produce completion', async () => {
+    const h = harness(); await h.session.start(); h.fix(); await flush();
+    const first = h.time;
+    for (let i = 0; i < 40 && h.session.isActive(); i++) {
+        await h.advance(i === 0 ? 3000 : 250);
+        if (h.session.isActive()) { h.fix(h.fixes.at(-1), first); await flush(); }
+    }
+    if (h.session.isActive()) await h.advance(12000);
+    assert.equal(h.session.isActive(), false);
+    assert.equal(h.states.at(-1).errorCode, 'location_gap');
+    assert.equal(h.states.at(-1).elapsedMs, 0);
+    assert.equal(h.samples.length, 1, 'retries send no synthetic heartbeat');
+    assert.equal(h.states.some(state => state.phase === 'complete'), false);
+    assert.equal(h.cancels.length, 1);
 });
 
 test('repeated initial timeouts stop at the thirty-second acquisition limit, not forever', async () => {

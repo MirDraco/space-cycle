@@ -19,7 +19,7 @@
                     enabled: true,
                     latitude: 36.7678561856971,
                     longitude: 126.933492079991,
-                    radiusM: 100,
+                    radiusM: 300,
                     requiredMs: 60000,
                     maxAccuracyM: 50,
                 } : {}),

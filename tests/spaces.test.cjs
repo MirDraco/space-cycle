@@ -111,7 +111,7 @@ test('spaces keeps five slots per category with only the supplied indoor test si
     assert.equal(new Set(ids).size, 10);
     assert.equal((html.match(/class="slot-status">등록 예정/g) || []).length, 9);
     assert.match(html, /향설생활관2/);
-    assert.match(html, /반경 100m/);
+    assert.match(html, /반경 300m/);
     assert.match(html, /1분/);
 });
 

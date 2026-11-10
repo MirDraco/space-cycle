@@ -8,6 +8,7 @@
     const distance = document.getElementById('visit-distance');
     const accuracy = document.getElementById('visit-accuracy');
     const freshness = document.getElementById('visit-freshness');
+    const diagnostics = document.getElementById('visit-diagnostics');
     const login = document.getElementById('visit-login');
     const auth = () => window.SpaceCycleAuth;
     const user = () => auth()?.getUser();
@@ -59,6 +60,21 @@
     const reload = document.getElementById('visit-reload');
     const build = document.getElementById('visit-build');
     const release = document.querySelector('meta[name="spacecycle-release"]')?.content || 'unknown';
+    const locationCodes = new Set(['gps_stale', 'gps_duplicate', 'gps_clock', 'gps_invalid_timestamp', 'gps_timeout']);
+    function paintDiagnostics(state) {
+        const issue = locationCodes.has(state.locationIssue?.code) ? state.locationIssue : null;
+        const sample = issue || state.locationSample;
+        const parts = [];
+        if (Number.isFinite(sample?.requestMs)) parts.push(`위치 응답 대기 ${(Math.max(0, sample.requestMs) / 1000).toFixed(1)}초`);
+        if (Number.isFinite(sample?.fixAgeMs)) parts.push(`측정값 나이 ${(sample.fixAgeMs / 1000).toFixed(1)}초`);
+        if (issue) parts.push(issue.code);
+        if (diagnostics) {
+            diagnostics.textContent = parts.join(' · ');
+            diagnostics.hidden = parts.length === 0;
+        }
+        status.dataset.locationCode = issue?.code || '';
+        build.textContent = [`화면 버전 ${release}`, state.errorCode, issue?.code].filter(Boolean).join(' · ');
+    }
     build.textContent = `화면 버전 ${release}`;
     reload.addEventListener('click', () => location.reload());
     const session = engine.createVisitSession({
@@ -69,7 +85,7 @@
             status.dataset.errorCode = state.errorCode || '';
             status.textContent = state.message;
             reload.hidden = state.phase !== 'error';
-            build.textContent = `화면 버전 ${release}${state.errorCode ? ` · ${state.errorCode}` : ''}`;
+            paintDiagnostics(state);
             start.disabled = state.active || !auth()?.isReady || !user();
             stop.hidden = !state.active;
             start.textContent = state.active ? '체류 확인 중' : state.phase === 'complete' ? '다시 테스트하기' : '위치 확인하고 시작';

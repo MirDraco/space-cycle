@@ -41,13 +41,17 @@
         let lastFixTimestamp = -Infinity;
         let lastConfirmedAt = null;
         let deadlineAt = 0;
+        let locationIssue = null;
+        let locationSample = null;
         const current = run => active && generation === run;
         const emit = (phase, message, extra = {}) => onState({
             phase, message, active, elapsedMs: snapshot?.elapsedMs || 0,
             requiredMs: snapshot?.requiredMs || 60000,
             distanceM: snapshot?.distanceM ?? null, accuracyM: snapshot?.accuracyM ?? null,
             maxGapMs: snapshot?.maxGapMs ?? 0, sampleEveryMs: snapshot?.sampleEveryMs ?? 0,
-            confirmedAt: lastConfirmedAt, locationPending: false, ...extra,
+            confirmedAt: lastConfirmedAt, locationPending: false,
+            locationIssue: locationIssue && { ...locationIssue },
+            locationSample: locationSample && { ...locationSample }, ...extra,
         });
         function clearTimers() {
             if (pollTimer !== null) unschedule(pollTimer);
@@ -90,14 +94,34 @@
                 if (current(run)) deadlineExpired();
             }, milliseconds);
         }
-        async function submit(run, position) {
+        function retryLocation(run, code, message, sample = null) {
+            if (!current(run)) return;
+            if (now() >= deadlineAt) { deadlineExpired(); return; }
+            locationIssue = { code, ...(sample || {}) };
+            emit(lastConfirmedAt === null ? 'locating' : snapshot.phase,
+                `${message} ${lastConfirmedAt === null ? '아직 체류 시간은 시작되지 않았어요.' : '확인된 시간은 유지해요.'}`,
+                { locationPending: true });
+            // No cached coordinate, new confirmation, or deadline extension on a retry.
+            pollTimer = schedule(() => locate(run), 250);
+        }
+        async function submit(run, position, requestMs) {
             if (!current(run)) return;
             const timestamp = position?.timestamp;
             const age = wallNow() - timestamp;
+            locationSample = { requestMs, fixAgeMs: Number.isFinite(timestamp) && Number.isFinite(age) ? Math.round(age) : null };
             if (!Number.isFinite(timestamp) || age < -1000 || age > 4000 || timestamp <= lastFixTimestamp) {
-                fail('최신 위치를 확인하지 못해 초기화했어요. 잠시 후 다시 시작해주세요.');
+                const code = !Number.isFinite(timestamp) ? 'gps_invalid_timestamp'
+                    : age < -1000 ? 'gps_clock' : age > 4000 ? 'gps_stale' : 'gps_duplicate';
+                const messages = {
+                    gps_invalid_timestamp: '기기에서 위치 측정 시각을 받지 못해 다시 확인 중이에요.',
+                    gps_clock: '위치 측정 시각과 기기 시각이 맞지 않아 다시 확인 중이에요.',
+                    gps_stale: '기기가 오래된 위치를 반환해 전송하지 않고 새 위치를 다시 확인 중이에요.',
+                    gps_duplicate: '이전과 같은 위치 측정 시각이 반환되어 새 위치를 다시 확인 중이에요.',
+                };
+                retryLocation(run, code, messages[code], locationSample);
                 return;
             }
+            locationIssue = null;
             lastFixTimestamp = timestamp;
             const { latitude, longitude, accuracy } = position.coords || {};
             try {
@@ -123,7 +147,7 @@
                 }
                 const messages = {
                     dwelling: next.reason === 'gap' ? '위치 확인 간격이 길어 처음부터 다시 측정해요.' : '반경 안에 있어요. 화면을 켜두고 머물러주세요.',
-                    outside: '반경 100m 밖이에요. 시간을 초기화했어요. 범위 안으로 돌아오면 다시 시작해요.',
+                    outside: `허용 반경${next.space?.radiusM ? ` ${next.space.radiusM}m` : ''} 밖이에요. 시간을 초기화했어요. 범위 안으로 돌아오면 다시 시작해요.`,
                     uncertain: '위치가 불확실해 시간을 초기화했어요. 정확도가 좋아지면 다시 시작해요.',
                 };
                 if (!Object.hasOwn(messages, next.phase)) throw new Error('invalid_response');
@@ -137,6 +161,7 @@
         function locate(run) {
             if (!current(run)) return;
             if (now() >= deadlineAt) { deadlineExpired(); return; }
+            const requestedAt = now();
             // A location attempt settles once, even if a broken provider delivers late callbacks.
             let settled = false;
             const accept = () => {
@@ -146,16 +171,13 @@
                 return true;
             };
             try {
-                geolocation.getCurrentPosition(position => { if (accept()) void submit(run, position); }, error => {
+                geolocation.getCurrentPosition(position => { if (accept()) void submit(run, position, Math.max(0, Math.round(now() - requestedAt))); }, error => {
                     if (!accept()) return;
                     if (error?.code === 3) {
-                        // Retry only acquisition: never replay a coordinate or extend the server gap.
-                        emit(lastConfirmedAt === null ? 'locating' : snapshot.phase,
-                            lastConfirmedAt === null
-                                ? '처음 위치 응답이 늦어 다시 확인 중이에요. 아직 체류 시간은 시작되지 않았어요.'
-                                : '위치 응답이 늦어 다시 확인 중이에요. 확인된 시간은 유지해요.',
-                            { locationPending: true });
-                        pollTimer = schedule(() => locate(run), 250);
+                        retryLocation(run, 'gps_timeout', lastConfirmedAt === null
+                            ? '처음 위치 응답이 늦어 다시 확인 중이에요.'
+                            : '위치 응답이 늦어 다시 확인 중이에요.',
+                        { requestMs: Math.max(0, Math.round(now() - requestedAt)), fixAgeMs: null });
                         return;
                     }
                     const messages = {
@@ -174,6 +196,7 @@
             snapshot = null;
             lastConfirmedAt = null;
             lastFixTimestamp = -Infinity;
+            locationIssue = locationSample = null;
             controller = new AbortController();
             emit('requesting', '위치 확인을 준비하고 있어요.');
             armDeadline(run, 30000);

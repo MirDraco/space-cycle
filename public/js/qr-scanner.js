@@ -74,9 +74,10 @@
             link.href = '/spaces';
             if (decoded.status === 'matched') {
                 title.textContent = '공간 QR을 읽었어요';
-                const configured = window.SpaceCycleSpaces.getSpace(decoded.spaceId).enabled;
+                const space = window.SpaceCycleSpaces.getSpace(decoded.spaceId);
+                const configured = space.enabled;
                 description.textContent = configured
-                    ? `${policy.spaceLabel(decoded.spaceId)}의 QR이에요. 다음 화면에서 로그인하고 위치 권한을 허용한 뒤 반경 100m 안에서 1분 동안 머물러보세요. 완료한 공간은 한 번만 세요.`
+                    ? `${policy.spaceLabel(decoded.spaceId)}의 QR이에요. 다음 화면에서 로그인하고 위치 권한을 허용한 뒤 반경 ${space.radiusM}m 안에서 1분 동안 머물러보세요. 완료한 공간은 한 번만 세요.`
                     : `${policy.spaceLabel(decoded.spaceId)}의 링크예요. 아직 등록 예정인 공간이므로 방문 인증이나 보상은 진행되지 않아요.`;
                 link.textContent = configured ? '위치·체류 테스트로 이동' : '공간 정보 보기';
                 link.href = decoded.path;
