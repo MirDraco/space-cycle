@@ -17,8 +17,8 @@
                 ...(category === 'indoor' && n === 1 ? {
                     name: '향설생활관2',
                     enabled: true,
-                    latitude: 36.7678561856971,
-                    longitude: 126.933492079991,
+                    latitude: 36.768266,
+                    longitude: 126.933669,
                     radiusM: 300,
                     requiredMs: 60000,
                     maxAccuracyM: 50,

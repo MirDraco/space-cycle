@@ -10,7 +10,7 @@ function setup() {
     let time = 0;
     const store = createStayStore({ now: () => time });
     const advance = ms => { time += ms; };
-    const center = { latitude: 36.7678561856971, longitude: 126.933492079991, accuracy: 5 };
+    const center = { latitude: 36.768266, longitude: 126.933669, accuracy: 5 };
     return { store, advance, center, assessPosition };
 }
 
@@ -18,12 +18,13 @@ test('exact supplied coordinates, requested 300m and 60s are enforced by server 
     const { store, advance, center } = setup();
     let s = store.create('indoor-01');
     assert.equal(s.space.name, '향설생활관2');
-    assert.equal(s.space.latitude, 36.7678561856971);
-    assert.equal(s.space.longitude, 126.933492079991);
+    assert.equal(s.space.latitude, 36.768266);
+    assert.equal(s.space.longitude, 126.933669);
     assert.equal(s.space.radiusM, 300);
     assert.equal(s.requiredMs, 60000);
     s = store.sample(s.id, { challenge: s.challenge, ...center });
     assert.equal(s.phase, 'dwelling');
+    assert.equal(s.distanceM, 0, 'the exact new coordinates are the center of the configured radius');
     assert.equal(s.elapsedMs, 0);
     for (let i=0;i<11;i++) { advance(5000); s=store.sample(s.id,{challenge:s.challenge,...center}); }
     assert.equal(s.phase,'dwelling');
