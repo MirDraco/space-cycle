@@ -70,7 +70,13 @@
                 if (next.phase === 'complete') {
                     active = false;
                     clearTimers();
-                    emit('complete', '1분 체류 테스트 완료! 뱃지·보상이나 방문 기록은 아직 저장되지 않아요.');
+                    const persisted = next.persisted === true;
+                    const message = persisted
+                        ? next.newlyFound
+                            ? `체류 완료! 내가 찾은 스페이스에 추가했어요. 총 ${next.foundSpaceCount}곳이에요.`
+                            : `이미 찾은 공간이에요. 중복으로 세지 않아요. 총 ${next.foundSpaceCount}곳이에요.`
+                        : '1분 체류 테스트 완료! 방문 기록은 저장되지 않았어요.';
+                    emit('complete', message, { persisted, newlyFound: next.newlyFound === true, foundSpaceCount: next.foundSpaceCount });
                     discard(snapshot);
                     snapshot = null;
                     return;

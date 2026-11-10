@@ -17,11 +17,36 @@
         <h1 class="page-title">로그인</h1>
         <p class="page-description">Google 계정으로 시작해요.</p>
         <section class="info-panel" aria-label="Google 로그인">
-            <p id="auth-status" role="status">로그인 상태 확인 중...</p>
-            <button class="page-action" id="google-login" type="button" disabled>Google로 계속하기</button>
+            <p id="auth-status" role="status" aria-live="polite" aria-atomic="true">로그인 상태 확인 중...</p>
+            <button class="page-action" id="google-login" type="button" aria-describedby="auth-status" disabled>Google로 계속하기</button>
             <button class="page-action" id="logout" type="button" hidden>로그아웃</button>
+            <button class="page-action" id="auth-retry" type="button" hidden>새로고침하고 다시 연결</button>
+            <p class="page-note">Google 로그인 창에서 계정을 선택하면 이전 화면으로 돌아가요.</p>
+            <noscript><p class="page-note">로그인하려면 브라우저에서 JavaScript를 켠 뒤 새로고침해 주세요.</p></noscript>
         </section>
     </main>
     <!-- app-navigation -->
+    <script id="auth-bootstrap">
+        (() => {
+            const status = document.getElementById('auth-status');
+            const login = document.getElementById('google-login');
+            const retry = document.getElementById('auth-retry');
+            // Classic inline script: also runs when a Firebase CDN import fails.
+            const timeout = window.setTimeout(() => {
+                if (window.SpaceCycleAuth?.isReady) return;
+                login.disabled = true;
+                if (!status.dataset.authError) {
+                    status.textContent = '로그인 서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침해 주세요.';
+                }
+                retry.hidden = false;
+            }, 10000);
+            window.addEventListener('spacecycle:authchange', () => {
+                if (!window.SpaceCycleAuth?.isReady) return;
+                window.clearTimeout(timeout);
+                retry.hidden = true;
+            });
+            retry.addEventListener('click', () => window.location.reload());
+        })();
+    </script>
 </body>
 </html>

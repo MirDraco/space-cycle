@@ -12,3 +12,6 @@ secrets/
 .DS_Store
 npm-debug.log*
 coverage/
+/data/
+*.sqlite
+*.sqlite-*

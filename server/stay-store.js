@@ -50,18 +50,19 @@ function createStayStore({ now = () => performance.now(), maxSessions = 500 } = 
             sampleEveryMs: 3000, reason, persisted: false,
         };
     }
-    function create(spaceId) {
+    function create(spaceId, owner = null) {
         const space = getSpace(spaceId);
         if (!space?.enabled) fail('not_configured', 404);
         cleanup();
         if (sessions.size >= maxSessions) fail('capacity', 429);
-        const s = { id: token(), challenge: token(), spaceId, createdAt: now(), startedAt: null,
+        const s = { id: token(), challenge: token(), spaceId, owner, createdAt: now(), startedAt: null,
             lastSeen: null, phase: 'waiting', elapsedMs: 0, distanceM: null, accuracyM: null };
         sessions.set(s.id, s);
         return snapshot(s);
     }
-    function sample(id, body) {
+    function sample(id, body, owner = null) {
         const s = lookup(id);
+        if (s.owner !== owner) fail('wrong_owner', 403);
         if (!body || typeof body !== 'object' || Array.isArray(body) ||
             Object.keys(body).sort().join(',') !== 'accuracy,challenge,latitude,longitude') fail('invalid_payload');
         verify(s, body.challenge);
@@ -85,8 +86,9 @@ function createStayStore({ now = () => performance.now(), maxSessions = 500 } = 
         s.challenge = token();
         return snapshot(s, gap ? 'gap' : null);
     }
-    function cancel(id, challenge) {
+    function cancel(id, challenge, owner = null) {
         const s = lookup(id);
+        if (s.owner !== owner) fail('wrong_owner', 403);
         verify(s, challenge);
         sessions.delete(id);
     }

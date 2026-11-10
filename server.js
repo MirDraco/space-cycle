@@ -5,8 +5,10 @@ const fs = require('node:fs');
 const PORT = 4500;
 const spaces = require('./public/js/space-data.js');
 const { createStayRouter } = require('./server/stay-routes.js');
+const { createMeRouter } = require('./server/me-routes.js');
 
 app.use('/api/stays', createStayRouter());
+app.use('/api/me', createMeRouter());
 app.get('/s/:code', (req, res) => {
     const place = spaces.fromCode(req.params.code);
     if (!place || req.originalUrl !== `/s/${place.code}`) return res.sendStatus(404);

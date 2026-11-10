@@ -38,6 +38,15 @@
      --shadow: rgba(11, 37, 69, 0.4);
 }
 
+a:link,
+a:visited,
+a:hover,
+a:focus-visible,
+a:active {
+     color: var(--link-color, var(--primary));
+     text-underline-offset: 0.18em;
+}
+
 body {
      min-height: 100vh;
      isolation: isolate;
@@ -132,6 +141,7 @@ body::after {
 
 .site-logo,
 .auth-link {
+     --link-color: var(--text);
      display: inline-flex;
      align-items: center;
      min-height: 44px;
@@ -209,6 +219,7 @@ body::after {
 }
 
 .bottom-nav a {
+     --link-color: var(--muted);
      display: flex;
      flex-direction: column;
      align-items: center;
@@ -227,6 +238,7 @@ body::after {
 }
 
 .bottom-nav a[aria-current="page"] {
+     --link-color: var(--text);
      color: var(--text);
      background: color-mix(in srgb, var(--secondary) 23%, transparent);
      font-weight: 800;
@@ -325,6 +337,7 @@ summary:focus-visible,
 }
 
 .page-action {
+     --link-color: var(--primary-text);
      display: flex;
      align-items: center;
      justify-content: center;

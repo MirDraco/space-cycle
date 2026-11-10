@@ -12,6 +12,7 @@ COPY --chown=node:node server.js LICENSE ./
 COPY --chown=node:node server/ ./server/
 COPY --chown=node:node public/ ./public/
 COPY --chown=node:node views/ ./views/
+RUN mkdir -p /app/data && chown node:node /app/data && chmod 700 /app/data
 
 USER node
 EXPOSE 4500

@@ -36,6 +36,12 @@ test.after(async () => {
     if (server) await new Promise(resolve => server.close(resolve));
 });
 
+test('personal count route is present and rejects anonymous requests',async()=>{
+    const response=await fetch(`${base}/api/me/spaces`);
+    assert.equal(response.status,401);
+    assert.deepEqual(await response.json(),{error:'login_required'});
+});
+
 test('GET /healthz reports process health without user or Firebase data', async () => {
     const response = await fetch(`${base}/healthz`);
     assert.equal(response.status, 200);

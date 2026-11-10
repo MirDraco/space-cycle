@@ -10,6 +10,9 @@ services:
     init: true
     environment:
       NODE_ENV: production
+      SPACE_CYCLE_DB: /app/data/visits.sqlite
+    volumes:
+      - visits-data:/app/data
     # A host-installed cloudflared can reach this without a public app port.
     ports:
       - "127.0.0.1:4500:4500"
@@ -29,3 +32,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  visits-data:

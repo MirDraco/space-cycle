@@ -37,6 +37,7 @@
     justify-content: center;
 }
 .in-first-btn{
+    --link-color: var(--primary-text);
     padding: 12px 15px;
     background: linear-gradient(135deg, var(--primary), var(--primary-end));
     color: var(--primary-text);
@@ -47,6 +48,7 @@
 }
 
 .in-second-btn{
+    --link-color: var(--secondary-text);
     padding: 12px 15px;
     background: var(--secondary);
     color: var(--secondary-text);

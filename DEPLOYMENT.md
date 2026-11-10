@@ -7,13 +7,13 @@
 - 앱 내부 포트: `4500`
 - 서버 게시 주소: **`http://127.0.0.1:4500`** (서버 내부에서만 접근)
 - 외부 접속 계획: **`https://spacecycle.space` → Cloudflare Tunnel → 서버 127.0.0.1:4500**
-- Google 로그인/DB는 기존 Firebase 사용. 로컬 DB 볼륨은 필요하지 않음.
+- Google 로그인은 기존 Firebase Authentication 사용. 고유 완료 기록은 **SQLite named volume `space-cycle_visits-data`**에 보존하며 `/app/data/visits.sqlite`를 사용.
 
 `127.0.0.1` 바인딩은 의도적인 설정이다. 서버의 LAN/Tailscale IP에 `:4500`을 붙여도 직접 접속되지 않는다. 공유기 포트포워딩이나 방화벽의 공개 4500 허용은 필요하지 않다. Tunnel 설정 전에는 외부 HTTPS 사이트가 동작한다고 간주하지 않는다.
 
 ## 로컬 개발과 테스트
 
-Node.js 24와 npm이 필요하다.
+Node.js 24.19 이상과 npm이 필요하다. 서버 이미지에는 Node 24의 `node:sqlite`가 포함된다.
 
 ```bash
 npm ci
@@ -21,7 +21,7 @@ npm test
 npm start
 ```
 
-`npm test`는 프로세스/페이지 HTTP, QR 정책/카메라 수명, GPS 반경·연속 체류 서버/API·위치 세션 및 배포 구성 검사를 수행한다. 실제 Google 로그인·Firestore 권한·물리 카메라·현장 GPS를 검증하는 테스트는 아니다.
+`npm test`는 프로세스/페이지 HTTP, QR 정책/카메라 수명, GPS 반경·연속 체류, 서명 토큰 검증, 계정 분리·중복 방지·SQLite 재시작 보존 및 배포 구성 검사를 수행한다. 테스트용 서명키/가상 계정을 사용하며 실제 Google 계정 로그인·물리 카메라·현장 GPS를 대신하지 않는다. 개발용 기록은 Git에서 제외한 `data/`에 저장하고 테스트는 별도 임시 DB를 사용한다.
 
 ## 최초 서버 배포
 
@@ -112,10 +112,18 @@ IMAGE_TAG=<정상 커밋 태그> docker compose up -d --no-build --wait --wait-t
 - 브라우저용 Firebase 설정은 이미 공개 클라이언트 코드이며 서버 관리자 자격증명과 다르다. 데이터 보호는 적절한 Firebase Security Rules로 검증해야 한다.
 - 앱은 non-root 사용자, 읽기 전용 root filesystem, 최소 권한으로 실행한다. 로그 용량과 메모리/CPU에 제한을 둔다.
 - Docker 기본 이미지는 digest로 고정했다. 보안 업데이트 때 확인한 새 digest로 갱신·테스트·재배포한다.
-- TLS 연결 성공과 Google 인증 성공, QR/GPS/체류/보상 기능 구현은 별개다. 내부 공간 01(향설생활관2)의 QR·100m·1분 체류 테스트를 제공하며 뱃지/보상·Firestore 방문 기록 저장은 미구현이다. `http://서버IP:4500` 같은 일반 HTTP에서는 카메라·위치 권한을 요청할 수 없으므로 모바일에서는 HTTPS 주소를 사용한다. 개발용 localhost는 예외다.
+- TLS 연결 성공과 Google 인증 성공, QR/GPS/체류/보상 기능 구현은 별개다. 내부 공간 01(향설생활관2)의 QR·100m·1분 체류 완료를 로그인 계정별 SQLite 기록으로 저장하며 같은 공간은 한 번만 센다. 뱃지/스티커 보상·Firestore 저장은 미구현이다. 모바일 카메라·위치 권한은 HTTPS에서 확인한다. 개발용 localhost는 예외다.
 - Docker 이미지에 `server/`, `public/js/space-data.js`, `views/visit.html` 및 위치 화면 스크립트가 모두 포함되어야 한다. 짧은 QR `/s/in01`은 `/visit?space=indoor-01`로 302 이동한다. `/s/in02`~`in05`, `/s/out01`~`out05`는 등록 예정 공간 정보로 이동한다. 새 소스가 자동으로 운영에 반영되는 것은 아니다.
-- 체류 API는 **단일 Node 프로세스 메모리**를 사용한다. 세션 최대 500개, 생성 후 10분 만료, 재시작 시 초기화된다. 다중 replica/worker에는 공유 저장소가 필요하다. 미인증 테스트용으로 실제 보상을 연결하지 말고, 공개 행사 운영 전 로그인 검증·요청 제한·저장 설계를 추가한다. 위치 요청 본문을 프록시/디버그 로그에 저장하지 않는다.
+- 진행 중 체류 API는 **단일 Node 프로세스 메모리**를 사용한다. 세션 최대 500개, 생성 후 10분 만료, 진행 중 시간은 재시작 시 초기화된다. 완료 기록은 named volume으로 보존한다. 다중 replica/worker에는 공유 세션·저장 설계가 필요하다. 실제 보상/행사 운영 전 요청 제한·백업·계정 탈퇴·강제 철회 검증을 추가한다. 위치 요청 본문/Authorization 헤더를 프록시·디버그 로그에 저장하지 않는다.
 - 배포 후 `/s/in01` 연결과 iOS Safari/Android Chrome에서 위치 허용·거부, 반경 이탈, 정확도 부족, 화면 잠금·백그라운드, 오프라인, 새로고침, 1분 완료를 확인한다. 실내 위치 정확도 부족은 완료되지 않아야 하며 반경을 자동으로 넓히지 않는다.
+
+## 로그인과 완료 기록 운영
+
+- Firebase Authentication → Settings → Authorized domains에서 `spacecycle.space`가 있는지 확인한다. Google 제공자도 활성화되어 있어야 한다. `auth/unauthorized-domain`은 누락된 도메인, `auth/popup-blocked`는 팝업 차단이다. `authDomain`을 임의로 운영 도메인으로 바꾸면 안 된다.
+- 서버는 Google securetoken 공개 JWKS에 HTTPS 접근해야 한다. 별도 서비스 계정·개인키·Firebase 관리자 토큰을 Git이나 이미지에 넣지 않는다. Google ID 토큰은 매 요청 검증하고 uid는 검증 결과만 사용한다.
+- Compose volume `visits-data:/app/data`, `SPACE_CYCLE_DB=/app/data/visits.sqlite`, container user `node`를 유지한다. 루트 파일시스템은 읽기 전용이고 DB 디렉터리만 쓰기 가능하다. 이미지가 만든 node 소유 디렉터리는 새 named volume에 복사된다. 기존 볼륨 권한 오류가 있으면 원인을 확인하고 DB를 삭제해 해결하지 않는다.
+- **`docker compose down -v`, 볼륨 prune/삭제 금지.** 재빌드/up/일반 restart는 기록을 유지한다. 백업은 SQLite backup API로 일관된 사본을 만든 뒤 별도 보관하며, 실행 중 DB 파일 하나만 복사하면 WAL 기록을 놓칠 수 있다. 백업·탈퇴 삭제 요청은 계정 ID가 포함된 개인정보로 취급한다.
+- 홈 숫자는 기존 Firestore `foundSpaceCount`가 아닌 서버의 검증된 고유 완료 행을 읽는다. 과거 테스트는 저장 기능이 없었으므로 소급 집계하지 않는다. Google 로그인 후 향설생활관2를 한 번 완료하면 1, 다시 완료해도 1이어야 한다.
 
 ## 공식 문서
 
