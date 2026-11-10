@@ -21,7 +21,7 @@ npm test
 npm start
 ```
 
-`npm test`는 프로세스/페이지 HTTP 검사와 배포 구성 검사를 수행한다. 실제 Google 로그인·Firestore 권한·GPS·QR 인증을 검증하는 테스트는 아니다.
+`npm test`는 프로세스/페이지 HTTP, QR 정책/카메라 수명, GPS 반경·연속 체류 서버/API·위치 세션 및 배포 구성 검사를 수행한다. 실제 Google 로그인·Firestore 권한·물리 카메라·현장 GPS를 검증하는 테스트는 아니다.
 
 ## 최초 서버 배포
 
@@ -112,7 +112,10 @@ IMAGE_TAG=<정상 커밋 태그> docker compose up -d --no-build --wait --wait-t
 - 브라우저용 Firebase 설정은 이미 공개 클라이언트 코드이며 서버 관리자 자격증명과 다르다. 데이터 보호는 적절한 Firebase Security Rules로 검증해야 한다.
 - 앱은 non-root 사용자, 읽기 전용 root filesystem, 최소 권한으로 실행한다. 로그 용량과 메모리/CPU에 제한을 둔다.
 - Docker 기본 이미지는 digest로 고정했다. 보안 업데이트 때 확인한 새 digest로 갱신·테스트·재배포한다.
-- TLS 연결 성공과 Google 인증 성공, QR/GPS/체류/보상 기능 구현은 별개다. 현재 장소 상세·QR·GPS·체류·보상은 준비 중이다.
+- TLS 연결 성공과 Google 인증 성공, QR/GPS/체류/보상 기능 구현은 별개다. 내부 공간 01(향설생활관2)의 QR·100m·1분 체류 테스트를 제공하며 뱃지/보상·Firestore 방문 기록 저장은 미구현이다. `http://서버IP:4500` 같은 일반 HTTP에서는 카메라·위치 권한을 요청할 수 없으므로 모바일에서는 HTTPS 주소를 사용한다. 개발용 localhost는 예외다.
+- Docker 이미지에 `server/`, `public/js/space-data.js`, `views/visit.html` 및 위치 화면 스크립트가 모두 포함되어야 한다. 짧은 QR `/s/in01`은 `/visit?space=indoor-01`로 302 이동한다. `/s/in02`~`in05`, `/s/out01`~`out05`는 등록 예정 공간 정보로 이동한다. 새 소스가 자동으로 운영에 반영되는 것은 아니다.
+- 체류 API는 **단일 Node 프로세스 메모리**를 사용한다. 세션 최대 500개, 생성 후 10분 만료, 재시작 시 초기화된다. 다중 replica/worker에는 공유 저장소가 필요하다. 미인증 테스트용으로 실제 보상을 연결하지 말고, 공개 행사 운영 전 로그인 검증·요청 제한·저장 설계를 추가한다. 위치 요청 본문을 프록시/디버그 로그에 저장하지 않는다.
+- 배포 후 `/s/in01` 연결과 iOS Safari/Android Chrome에서 위치 허용·거부, 반경 이탈, 정확도 부족, 화면 잠금·백그라운드, 오프라인, 새로고침, 1분 완료를 확인한다. 실내 위치 정확도 부족은 완료되지 않아야 하며 반경을 자동으로 넓히지 않는다.
 
 ## 공식 문서
 

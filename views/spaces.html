@@ -4,98 +4,339 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-    <link rel="icon" type="image/png" href="/images/rounded-favicon_32.png">
+    <link rel="icon" href="/images/rounded-favicon_32.png">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/spaces.css">
     <script src="/js/theme.js"></script>
+    <script src="/js/space-data.js" defer></script>
+    <script src="/js/qr-policy.js" defer></script>
+    <script src="/js/spaces.js" defer></script>
     <script type="module" src="/js/auth.js"></script>
     <title>공간 둘러보기 · Space Cycle</title>
 </head>
-<body class="spaces-page">
+<body class="app-shell spaces-page">
     <a class="skip-link" href="#spaces-main">공간 목록으로 건너뛰기</a>
-    <header>
-        <a class="site-logo" href="/" aria-label="Space Cycle 홈">SPACE CYCLE</a>
-        <a class="btn auth-link" href="/login" data-auth-link>LOGIN</a>
-    </header>
+    <!-- app-header -->
+    <main class="page-main" id="spaces-main">
+        <p class="page-eyebrow">EXPLORE THE CAMPUS</p>
+        <h1 class="page-title">공간 둘러보기</h1>
+        <p class="page-description">건물 안에서도, 바깥에서도.<br>새로운 공간을 만날 준비를 하고 있어요.</p>
 
-    <main class="spaces-main" id="spaces-main">
-        <nav class="breadcrumb" aria-label="현재 위치">
-            <a href="/">Home</a>
-            <span aria-hidden="true">/</span>
-            <span aria-current="page">공간 보기</span>
-        </nav>
-
-        <div class="spaces-intro">
-            <p class="page-eyebrow">EXPLORE THE CAMPUS</p>
-            <h1>공간 둘러보기</h1>
-            <p class="page-description">익숙한 캠퍼스에서, 아직 몰랐던 공간을 만나보세요.</p>
+        <!-- Without JavaScript both category lists remain readable. -->
+        <div class="spaces-tabs" id="spaces-tabs" role="tablist" aria-label="공간 분류" hidden>
+            <button type="button" id="indoor-tab" role="tab" aria-controls="indoor-panel" aria-selected="true" tabindex="0" data-category-tab="indoor">내부 <span>5</span></button>
+            <button type="button" id="outdoor-tab" role="tab" aria-controls="outdoor-panel" aria-selected="false" tabindex="-1" data-category-tab="outdoor">외부 <span>5</span></button>
         </div>
 
-        <section class="spaces-section" aria-labelledby="spaces-heading">
+        <section class="spaces-panel" id="indoor-panel" aria-labelledby="indoor-heading">
             <div class="list-heading">
-                <h2 id="spaces-heading">공간 목록 <span class="space-count">1곳</span></h2>
-                <span class="list-note">테스트 운영 준비 중</span>
+                <h2 id="indoor-heading">내부 공간</h2>
+                <span>테스트 1곳 · 등록 예정 4곳</span>
             </div>
-
             <ul class="space-list">
                 <li>
-                    <article class="space-card" data-space-id="hyangseol-2" aria-labelledby="hyangseol-title">
-                        <!-- Replace this labelled placeholder when a real location photo is available. -->
-                        <div class="space-photo-placeholder">
-                            <span class="photo-index" aria-hidden="true">SPACE / 01</span>
-                            <div class="photo-placeholder-content">
-                                <svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false">
-                                    <path d="M8 13h8l3-5h10l3 5h8a3 3 0 0 1 3 3v21a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V16a3 3 0 0 1 3-3Z"/>
-                                    <circle cx="24" cy="26" r="8"/>
-                                    <path d="M35 19h3"/>
-                                </svg>
-                                <p>장소 사진 준비 중</p>
+                    <details class="space-slot" id="indoor-01" name="space-details" data-space-slot="indoor-01" data-category="indoor">
+                        <summary class="slot-summary">
+                            <span class="slot-number" aria-hidden="true">01</span>
+                            <span class="slot-copy">
+                                <span class="slot-title">향설생활관2</span>
+                                <span class="slot-subtitle">내부 공간 01 · GPS 체류 테스트</span>
+                            </span>
+                            <span class="slot-meta">
+                                <span class="slot-status">테스트</span>
+                                <svg class="slot-chevron" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                            </span>
+                        </summary>
+                        <div class="slot-details">
+                            <div class="slot-photo-placeholder" role="img" aria-label="향설생활관2, 공간 사진 준비 중">
+                                <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 13h8l3-5h10l3 5h8a3 3 0 0 1 3 3v21a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V16a3 3 0 0 1 3-3Z"/><circle cx="24" cy="26" r="8"/></svg>
+                                <span>공간 사진 준비 중</span>
                             </div>
-                            <span class="photo-caption">향설생활관 2관</span>
-                        </div>
-
-                        <div class="space-card-content">
-                            <span class="space-tag">테스트 공간</span>
-                            <h3 id="hyangseol-title">향설생활관 2관</h3>
-                            <p class="space-description">방문 확인 흐름을 점검할 Space Cycle의 첫 번째 테스트 공간입니다.</p>
-
-                            <dl class="space-meta">
-                                <div>
-                                    <dt>위치</dt>
-                                    <dd>순천향대학교 캠퍼스</dd>
-                                </div>
-                                <div>
-                                    <dt>진행 상태</dt>
-                                    <dd>QR · 위치 인증 준비 중</dd>
-                                </div>
+                            <h3>공간 특징</h3>
+                            <p>QR·위치·체류 기능을 확인하는 테스트 장소예요. 지정한 중심점의 반경 100m 안에서 1분 동안 머물러보세요.</p>
+                            <dl class="slot-features">
+                                <div><dt>분류</dt><dd>내부 공간</dd></div>
+                                <div><dt>테스트 조건</dt><dd>반경 100m · 연속 1분</dd></div>
                             </dl>
-
-                            <details class="space-details">
-                                <summary>
-                                    <span class="details-closed-label">테스트 안내 보기</span>
-                                    <span class="details-open-label">테스트 안내 닫기</span>
-                                    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><path d="m5 7.5 5 5 5-5"/></svg>
-                                </summary>
-                                <div class="space-details-body">
-                                    <p>향설생활관 2관은 기능 검증용 장소이며, 최종 유휴 공간으로 선정된 것은 아닙니다.</p>
-                                    <p>QR 연결과 위치 인증은 준비 중입니다. 현재는 방문 인증이나 스티커 보상을 제공하지 않습니다.</p>
-                                </div>
-                            </details>
+                            <a class="page-action slot-scan-link" href="/qr?space=indoor-01">QR 찍으러 가기 <span aria-hidden="true">→</span></a>
+                            <p class="slot-disclaimer">위치 권한이 필요해요. 화면을 켜두고 머물러주세요. 이번 테스트는 뱃지·보상을 저장하지 않아요.</p>
                         </div>
-                    </article>
+                    </details>
+                </li>
+                <li>
+                    <details class="space-slot" id="indoor-02" name="space-details" data-space-slot="indoor-02" data-category="indoor">
+                        <summary class="slot-summary">
+                            <span class="slot-number" aria-hidden="true">02</span>
+                            <span class="slot-copy">
+                                <span class="slot-title">내부 공간 02</span>
+                                <span class="slot-subtitle">장소명·사진 준비 중</span>
+                            </span>
+                            <span class="slot-meta">
+                                <span class="slot-status">등록 예정</span>
+                                <svg class="slot-chevron" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                            </span>
+                        </summary>
+                        <div class="slot-details">
+                            <div class="slot-photo-placeholder" role="img" aria-label="내부 공간 02, 공간 사진 준비 중">
+                                <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 13h8l3-5h10l3 5h8a3 3 0 0 1 3 3v21a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V16a3 3 0 0 1 3-3Z"/><circle cx="24" cy="26" r="8"/></svg>
+                                <span>공간 사진 준비 중</span>
+                            </div>
+                            <h3>공간 특징</h3>
+                            <p>장소 선정 후 사진과 특징을 소개할 예정이에요. 아직 실제 장소 정보가 등록되지 않았어요.</p>
+                            <dl class="slot-features">
+                                <div><dt>분류</dt><dd>내부 공간</dd></div>
+                                <div><dt>특징·이용 안내</dt><dd>장소 선정 후 추가 예정</dd></div>
+                            </dl>
+                            <a class="page-action slot-scan-link" href="/qr?space=indoor-02">QR 찍으러 가기 <span aria-hidden="true">→</span></a>
+                            <p class="slot-disclaimer">카메라에서 QR을 읽을 수 있어요. 등록 예정 항목은 방문 인증이나 보상을 제공하지 않아요.</p>
+                        </div>
+                    </details>
+                </li>
+                <li>
+                    <details class="space-slot" id="indoor-03" name="space-details" data-space-slot="indoor-03" data-category="indoor">
+                        <summary class="slot-summary">
+                            <span class="slot-number" aria-hidden="true">03</span>
+                            <span class="slot-copy">
+                                <span class="slot-title">내부 공간 03</span>
+                                <span class="slot-subtitle">장소명·사진 준비 중</span>
+                            </span>
+                            <span class="slot-meta">
+                                <span class="slot-status">등록 예정</span>
+                                <svg class="slot-chevron" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                            </span>
+                        </summary>
+                        <div class="slot-details">
+                            <div class="slot-photo-placeholder" role="img" aria-label="내부 공간 03, 공간 사진 준비 중">
+                                <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 13h8l3-5h10l3 5h8a3 3 0 0 1 3 3v21a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V16a3 3 0 0 1 3-3Z"/><circle cx="24" cy="26" r="8"/></svg>
+                                <span>공간 사진 준비 중</span>
+                            </div>
+                            <h3>공간 특징</h3>
+                            <p>장소 선정 후 사진과 특징을 소개할 예정이에요. 아직 실제 장소 정보가 등록되지 않았어요.</p>
+                            <dl class="slot-features">
+                                <div><dt>분류</dt><dd>내부 공간</dd></div>
+                                <div><dt>특징·이용 안내</dt><dd>장소 선정 후 추가 예정</dd></div>
+                            </dl>
+                            <a class="page-action slot-scan-link" href="/qr?space=indoor-03">QR 찍으러 가기 <span aria-hidden="true">→</span></a>
+                            <p class="slot-disclaimer">카메라에서 QR을 읽을 수 있어요. 등록 예정 항목은 방문 인증이나 보상을 제공하지 않아요.</p>
+                        </div>
+                    </details>
+                </li>
+                <li>
+                    <details class="space-slot" id="indoor-04" name="space-details" data-space-slot="indoor-04" data-category="indoor">
+                        <summary class="slot-summary">
+                            <span class="slot-number" aria-hidden="true">04</span>
+                            <span class="slot-copy">
+                                <span class="slot-title">내부 공간 04</span>
+                                <span class="slot-subtitle">장소명·사진 준비 중</span>
+                            </span>
+                            <span class="slot-meta">
+                                <span class="slot-status">등록 예정</span>
+                                <svg class="slot-chevron" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                            </span>
+                        </summary>
+                        <div class="slot-details">
+                            <div class="slot-photo-placeholder" role="img" aria-label="내부 공간 04, 공간 사진 준비 중">
+                                <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 13h8l3-5h10l3 5h8a3 3 0 0 1 3 3v21a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V16a3 3 0 0 1 3-3Z"/><circle cx="24" cy="26" r="8"/></svg>
+                                <span>공간 사진 준비 중</span>
+                            </div>
+                            <h3>공간 특징</h3>
+                            <p>장소 선정 후 사진과 특징을 소개할 예정이에요. 아직 실제 장소 정보가 등록되지 않았어요.</p>
+                            <dl class="slot-features">
+                                <div><dt>분류</dt><dd>내부 공간</dd></div>
+                                <div><dt>특징·이용 안내</dt><dd>장소 선정 후 추가 예정</dd></div>
+                            </dl>
+                            <a class="page-action slot-scan-link" href="/qr?space=indoor-04">QR 찍으러 가기 <span aria-hidden="true">→</span></a>
+                            <p class="slot-disclaimer">카메라에서 QR을 읽을 수 있어요. 등록 예정 항목은 방문 인증이나 보상을 제공하지 않아요.</p>
+                        </div>
+                    </details>
+                </li>
+                <li>
+                    <details class="space-slot" id="indoor-05" name="space-details" data-space-slot="indoor-05" data-category="indoor">
+                        <summary class="slot-summary">
+                            <span class="slot-number" aria-hidden="true">05</span>
+                            <span class="slot-copy">
+                                <span class="slot-title">내부 공간 05</span>
+                                <span class="slot-subtitle">장소명·사진 준비 중</span>
+                            </span>
+                            <span class="slot-meta">
+                                <span class="slot-status">등록 예정</span>
+                                <svg class="slot-chevron" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                            </span>
+                        </summary>
+                        <div class="slot-details">
+                            <div class="slot-photo-placeholder" role="img" aria-label="내부 공간 05, 공간 사진 준비 중">
+                                <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 13h8l3-5h10l3 5h8a3 3 0 0 1 3 3v21a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V16a3 3 0 0 1 3-3Z"/><circle cx="24" cy="26" r="8"/></svg>
+                                <span>공간 사진 준비 중</span>
+                            </div>
+                            <h3>공간 특징</h3>
+                            <p>장소 선정 후 사진과 특징을 소개할 예정이에요. 아직 실제 장소 정보가 등록되지 않았어요.</p>
+                            <dl class="slot-features">
+                                <div><dt>분류</dt><dd>내부 공간</dd></div>
+                                <div><dt>특징·이용 안내</dt><dd>장소 선정 후 추가 예정</dd></div>
+                            </dl>
+                            <a class="page-action slot-scan-link" href="/qr?space=indoor-05">QR 찍으러 가기 <span aria-hidden="true">→</span></a>
+                            <p class="slot-disclaimer">카메라에서 QR을 읽을 수 있어요. 등록 예정 항목은 방문 인증이나 보상을 제공하지 않아요.</p>
+                        </div>
+                    </details>
                 </li>
             </ul>
-            <p class="spaces-footnote">다른 공간은 조사와 준비가 끝나면 차례로 추가할 예정입니다.</p>
         </section>
-    </main>
 
-    <nav class="bottom-nav" aria-label="주 메뉴">
-        <a href="/">Home</a>
-        <a href="/spaces" aria-current="page">공간</a>
-        <label class="theme-switch" title="다크 테마 전환">
-            <span>다크 테마</span>
-            <input type="checkbox" id="theme-toggle" role="switch" aria-label="다크 테마">
-        </label>
-    </nav>
+        <section class="spaces-panel" id="outdoor-panel" aria-labelledby="outdoor-heading">
+            <div class="list-heading">
+                <h2 id="outdoor-heading">외부 공간</h2>
+                <span>5곳 등록 예정</span>
+            </div>
+            <ul class="space-list">
+                <li>
+                    <details class="space-slot" id="outdoor-01" name="space-details" data-space-slot="outdoor-01" data-category="outdoor">
+                        <summary class="slot-summary">
+                            <span class="slot-number" aria-hidden="true">01</span>
+                            <span class="slot-copy">
+                                <span class="slot-title">외부 공간 01</span>
+                                <span class="slot-subtitle">장소명·사진 준비 중</span>
+                            </span>
+                            <span class="slot-meta">
+                                <span class="slot-status">등록 예정</span>
+                                <svg class="slot-chevron" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                            </span>
+                        </summary>
+                        <div class="slot-details">
+                            <div class="slot-photo-placeholder" role="img" aria-label="외부 공간 01, 공간 사진 준비 중">
+                                <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 13h8l3-5h10l3 5h8a3 3 0 0 1 3 3v21a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V16a3 3 0 0 1 3-3Z"/><circle cx="24" cy="26" r="8"/></svg>
+                                <span>공간 사진 준비 중</span>
+                            </div>
+                            <h3>공간 특징</h3>
+                            <p>장소 선정 후 사진과 특징을 소개할 예정이에요. 아직 실제 장소 정보가 등록되지 않았어요.</p>
+                            <dl class="slot-features">
+                                <div><dt>분류</dt><dd>외부 공간</dd></div>
+                                <div><dt>특징·이용 안내</dt><dd>장소 선정 후 추가 예정</dd></div>
+                            </dl>
+                            <a class="page-action slot-scan-link" href="/qr?space=outdoor-01">QR 찍으러 가기 <span aria-hidden="true">→</span></a>
+                            <p class="slot-disclaimer">카메라에서 QR을 읽을 수 있어요. 등록 예정 항목은 방문 인증이나 보상을 제공하지 않아요.</p>
+                        </div>
+                    </details>
+                </li>
+                <li>
+                    <details class="space-slot" id="outdoor-02" name="space-details" data-space-slot="outdoor-02" data-category="outdoor">
+                        <summary class="slot-summary">
+                            <span class="slot-number" aria-hidden="true">02</span>
+                            <span class="slot-copy">
+                                <span class="slot-title">외부 공간 02</span>
+                                <span class="slot-subtitle">장소명·사진 준비 중</span>
+                            </span>
+                            <span class="slot-meta">
+                                <span class="slot-status">등록 예정</span>
+                                <svg class="slot-chevron" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                            </span>
+                        </summary>
+                        <div class="slot-details">
+                            <div class="slot-photo-placeholder" role="img" aria-label="외부 공간 02, 공간 사진 준비 중">
+                                <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 13h8l3-5h10l3 5h8a3 3 0 0 1 3 3v21a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V16a3 3 0 0 1 3-3Z"/><circle cx="24" cy="26" r="8"/></svg>
+                                <span>공간 사진 준비 중</span>
+                            </div>
+                            <h3>공간 특징</h3>
+                            <p>장소 선정 후 사진과 특징을 소개할 예정이에요. 아직 실제 장소 정보가 등록되지 않았어요.</p>
+                            <dl class="slot-features">
+                                <div><dt>분류</dt><dd>외부 공간</dd></div>
+                                <div><dt>특징·이용 안내</dt><dd>장소 선정 후 추가 예정</dd></div>
+                            </dl>
+                            <a class="page-action slot-scan-link" href="/qr?space=outdoor-02">QR 찍으러 가기 <span aria-hidden="true">→</span></a>
+                            <p class="slot-disclaimer">카메라에서 QR을 읽을 수 있어요. 등록 예정 항목은 방문 인증이나 보상을 제공하지 않아요.</p>
+                        </div>
+                    </details>
+                </li>
+                <li>
+                    <details class="space-slot" id="outdoor-03" name="space-details" data-space-slot="outdoor-03" data-category="outdoor">
+                        <summary class="slot-summary">
+                            <span class="slot-number" aria-hidden="true">03</span>
+                            <span class="slot-copy">
+                                <span class="slot-title">외부 공간 03</span>
+                                <span class="slot-subtitle">장소명·사진 준비 중</span>
+                            </span>
+                            <span class="slot-meta">
+                                <span class="slot-status">등록 예정</span>
+                                <svg class="slot-chevron" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                            </span>
+                        </summary>
+                        <div class="slot-details">
+                            <div class="slot-photo-placeholder" role="img" aria-label="외부 공간 03, 공간 사진 준비 중">
+                                <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 13h8l3-5h10l3 5h8a3 3 0 0 1 3 3v21a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V16a3 3 0 0 1 3-3Z"/><circle cx="24" cy="26" r="8"/></svg>
+                                <span>공간 사진 준비 중</span>
+                            </div>
+                            <h3>공간 특징</h3>
+                            <p>장소 선정 후 사진과 특징을 소개할 예정이에요. 아직 실제 장소 정보가 등록되지 않았어요.</p>
+                            <dl class="slot-features">
+                                <div><dt>분류</dt><dd>외부 공간</dd></div>
+                                <div><dt>특징·이용 안내</dt><dd>장소 선정 후 추가 예정</dd></div>
+                            </dl>
+                            <a class="page-action slot-scan-link" href="/qr?space=outdoor-03">QR 찍으러 가기 <span aria-hidden="true">→</span></a>
+                            <p class="slot-disclaimer">카메라에서 QR을 읽을 수 있어요. 등록 예정 항목은 방문 인증이나 보상을 제공하지 않아요.</p>
+                        </div>
+                    </details>
+                </li>
+                <li>
+                    <details class="space-slot" id="outdoor-04" name="space-details" data-space-slot="outdoor-04" data-category="outdoor">
+                        <summary class="slot-summary">
+                            <span class="slot-number" aria-hidden="true">04</span>
+                            <span class="slot-copy">
+                                <span class="slot-title">외부 공간 04</span>
+                                <span class="slot-subtitle">장소명·사진 준비 중</span>
+                            </span>
+                            <span class="slot-meta">
+                                <span class="slot-status">등록 예정</span>
+                                <svg class="slot-chevron" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                            </span>
+                        </summary>
+                        <div class="slot-details">
+                            <div class="slot-photo-placeholder" role="img" aria-label="외부 공간 04, 공간 사진 준비 중">
+                                <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 13h8l3-5h10l3 5h8a3 3 0 0 1 3 3v21a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V16a3 3 0 0 1 3-3Z"/><circle cx="24" cy="26" r="8"/></svg>
+                                <span>공간 사진 준비 중</span>
+                            </div>
+                            <h3>공간 특징</h3>
+                            <p>장소 선정 후 사진과 특징을 소개할 예정이에요. 아직 실제 장소 정보가 등록되지 않았어요.</p>
+                            <dl class="slot-features">
+                                <div><dt>분류</dt><dd>외부 공간</dd></div>
+                                <div><dt>특징·이용 안내</dt><dd>장소 선정 후 추가 예정</dd></div>
+                            </dl>
+                            <a class="page-action slot-scan-link" href="/qr?space=outdoor-04">QR 찍으러 가기 <span aria-hidden="true">→</span></a>
+                            <p class="slot-disclaimer">카메라에서 QR을 읽을 수 있어요. 등록 예정 항목은 방문 인증이나 보상을 제공하지 않아요.</p>
+                        </div>
+                    </details>
+                </li>
+                <li>
+                    <details class="space-slot" id="outdoor-05" name="space-details" data-space-slot="outdoor-05" data-category="outdoor">
+                        <summary class="slot-summary">
+                            <span class="slot-number" aria-hidden="true">05</span>
+                            <span class="slot-copy">
+                                <span class="slot-title">외부 공간 05</span>
+                                <span class="slot-subtitle">장소명·사진 준비 중</span>
+                            </span>
+                            <span class="slot-meta">
+                                <span class="slot-status">등록 예정</span>
+                                <svg class="slot-chevron" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                            </span>
+                        </summary>
+                        <div class="slot-details">
+                            <div class="slot-photo-placeholder" role="img" aria-label="외부 공간 05, 공간 사진 준비 중">
+                                <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 13h8l3-5h10l3 5h8a3 3 0 0 1 3 3v21a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V16a3 3 0 0 1 3-3Z"/><circle cx="24" cy="26" r="8"/></svg>
+                                <span>공간 사진 준비 중</span>
+                            </div>
+                            <h3>공간 특징</h3>
+                            <p>장소 선정 후 사진과 특징을 소개할 예정이에요. 아직 실제 장소 정보가 등록되지 않았어요.</p>
+                            <dl class="slot-features">
+                                <div><dt>분류</dt><dd>외부 공간</dd></div>
+                                <div><dt>특징·이용 안내</dt><dd>장소 선정 후 추가 예정</dd></div>
+                            </dl>
+                            <a class="page-action slot-scan-link" href="/qr?space=outdoor-05">QR 찍으러 가기 <span aria-hidden="true">→</span></a>
+                            <p class="slot-disclaimer">카메라에서 QR을 읽을 수 있어요. 등록 예정 항목은 방문 인증이나 보상을 제공하지 않아요.</p>
+                        </div>
+                    </details>
+                </li>
+            </ul>
+        </section>
+        <p class="page-note">향설생활관2는 기능 확인용 테스트 장소예요. 나머지 공간의 이름·사진·설명은 장소 선정 후 추가할 예정이에요.</p>
+    </main>
+    <!-- app-navigation -->
 </body>
 </html>

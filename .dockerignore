@@ -3,6 +3,8 @@
 !package.json
 !package-lock.json
 !server.js
+!server/
+!server/**
 !LICENSE
 !public/
 !public/**

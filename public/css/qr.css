@@ -1,0 +1,144 @@
+/* Touch-first scanner; all framing stays inside the shared mobile shell. */
+.scan-context {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px 10px;
+    margin-top: 22px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.scan-context strong {
+    color: var(--text);
+    font-size: 14px;
+}
+
+.scan-context .status-pill {
+    padding: 3px 7px;
+    font-size: 10px;
+}
+
+.scanner {
+    margin-top: 24px;
+}
+
+.camera-stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--surface);
+}
+
+.camera-stage[data-active="true"] {
+    background: #061424;
+}
+
+#qr-video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.camera-idle {
+    display: grid;
+    justify-items: center;
+    gap: 18px;
+    padding: 24px;
+    color: var(--muted);
+    text-align: center;
+    font-size: 13px;
+}
+
+.camera-frame {
+    position: absolute;
+    inset: 12%;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    pointer-events: none;
+}
+
+.camera-stage[data-active="true"] .camera-frame {
+    border-color: #EEF4ED;
+}
+
+.scan-status {
+    min-height: 44px;
+    margin-top: 16px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+    word-break: keep-all;
+}
+
+.camera-controls {
+    display: grid;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.camera-controls .page-action {
+    margin-top: 0;
+}
+
+.camera-stop {
+    min-height: 48px;
+    padding: 12px 16px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.scan-result {
+    margin-top: 24px;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--surface);
+}
+
+.scan-result h2 {
+    font-size: 19px;
+    line-height: 1.5;
+    letter-spacing: -0.035em;
+}
+
+.scan-result p,
+.scanner-help p {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.8;
+    word-break: keep-all;
+}
+
+.scanner-help {
+    margin-top: 20px;
+}
+
+.scanner-help summary,
+.scanner-back {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--muted);
+    font-size: 13px;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    cursor: pointer;
+}
+
+.scanner-back {
+    margin-top: 16px;
+}

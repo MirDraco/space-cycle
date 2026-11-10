@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+    <link rel="icon" href="/images/rounded-favicon_32.png">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/qr.css">
+    <script src="/js/theme.js"></script>
+    <script src="/vendor/jsqr/jsQR.js" defer></script>
+    <script src="/js/space-data.js" defer></script>
+    <script src="/js/qr-policy.js" defer></script>
+    <script src="/js/qr-camera.js" defer></script>
+    <script src="/js/qr-scanner.js" defer></script>
+    <script type="module" src="/js/auth.js"></script>
+    <title>QR찍기 · Space Cycle</title>
+</head>
+<body class="app-shell">
+    <!-- app-header -->
+    <main class="page-main scanner-main">
+        <p class="page-eyebrow">SCAN &amp; EXPLORE</p>
+        <h1 class="page-title">QR찍기</h1>
+        <p class="page-description">카메라로 Space Cycle 공간 QR을 비춰주세요.</p>
+        <div class="scan-context" id="scan-context" hidden>
+            <span>선택한 공간</span>
+            <strong id="selected-space"></strong>
+            <span class="status-pill">등록 예정</span>
+        </div>
+
+        <section class="scanner" aria-label="QR 카메라">
+            <div class="camera-stage" id="camera-stage" data-active="false">
+                <video id="qr-video" playsinline muted aria-label="QR 스캔 카메라 영상" hidden></video>
+                <div class="camera-idle" id="camera-idle">
+                    <svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 5H5v9m29-9h9v9M5 34v9h9m29-9v9h-9"/><rect x="13" y="13" width="7" height="7" rx="1"/><rect x="28" y="13" width="7" height="7" rx="1"/><rect x="13" y="28" width="7" height="7" rx="1"/><path d="M28 28h7v7h-7Z"/></svg>
+                    <p>버튼을 누르면 카메라를 켜요</p>
+                </div>
+                <div class="camera-frame" aria-hidden="true"></div>
+            </div>
+            <p class="scan-status" id="scan-status" role="status" aria-live="polite" aria-atomic="true">카메라 시작 버튼을 준비하고 있어요.</p>
+            <div class="camera-controls">
+                <button class="page-action" id="camera-start" type="button" disabled>카메라 켜고 스캔</button>
+                <button class="camera-stop" id="camera-stop" type="button" hidden>카메라 끄기</button>
+            </div>
+        </section>
+
+        <section class="scan-result" id="scan-result" data-result="" aria-labelledby="result-title" hidden>
+            <h2 id="result-title" tabindex="-1"></h2>
+            <p id="result-description"></p>
+            <a class="page-action" id="result-link" href="/spaces" hidden>공간 정보 보기</a>
+        </section>
+        <p class="page-note">카메라 영상은 이 기기에서만 처리하며 서버에 업로드하지 않아요. 마이크는 사용하지 않고, 화면을 벗어나면 카메라를 꺼요.</p>
+        <p class="page-note">향설생활관2 QR은 위치·1분 체류 테스트로 연결돼요. QR 읽기만으로 방문 인증이나 보상이 완료되지는 않아요.</p>
+        <details class="scanner-help">
+            <summary>카메라가 안 켜지나요?</summary>
+            <p>HTTPS 주소를 Safari 또는 Chrome에서 열고 사이트의 카메라 권한을 허용해주세요. 다른 앱에서 카메라를 사용 중이면 닫은 뒤 다시 시도해주세요.</p>
+            <p>휴대폰 기본 카메라로 QR을 비추고 표시된 링크를 여는 방법도 사용할 수 있어요.</p>
+        </details>
+        <noscript><p class="page-note">카메라 스캔은 JavaScript가 필요해요. 휴대폰 기본 카메라를 이용해주세요.</p></noscript>
+        <a class="scanner-back" id="scanner-back" href="/spaces">공간 목록으로 돌아가기</a>
+    </main>
+    <!-- app-navigation -->
+</body>
+</html>

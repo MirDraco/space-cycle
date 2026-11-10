@@ -1,19 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+    <link rel="icon" href="/images/rounded-favicon_32.png">
     <link rel="stylesheet" href="/css/style.css">
     <script src="/js/theme.js"></script>
-    <title>Login</title>
-</head>
-<body>
-    <main>
-        <h1>로그인</h1>
-        <p id="auth-status" role="status">로그인 상태 확인 중...</p>
-        <button id="google-login" type="button" disabled>Google로 계속하기</button>
-        <button id="logout" type="button" hidden>로그아웃</button>
-    </main>
     <script type="module" src="/js/auth.js"></script>
+    <title>로그인 · Space Cycle</title>
+</head>
+<body class="app-shell">
+    <!-- app-header -->
+    <main class="page-main">
+        <p class="page-eyebrow">WELCOME TO SPACE CYCLE</p>
+        <h1 class="page-title">로그인</h1>
+        <p class="page-description">Google 계정으로 시작해요.</p>
+        <section class="info-panel" aria-label="Google 로그인">
+            <p id="auth-status" role="status">로그인 상태 확인 중...</p>
+            <button class="page-action" id="google-login" type="button" disabled>Google로 계속하기</button>
+            <button class="page-action" id="logout" type="button" hidden>로그아웃</button>
+        </section>
+    </main>
+    <!-- app-navigation -->
 </body>
 </html>

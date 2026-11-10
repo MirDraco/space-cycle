@@ -12,16 +12,9 @@
     <title>Space Cycle</title>
 </head>
 <!-- body 시작 -->
-<body>
+<body class="app-shell home-page">
     <!-- 헤더 공간 -->
-    <header id="header">
-        <div class="logo">
-            <p>SPACE CYCLE</p>
-        </div>
-        <div>
-            <a href="/login" id="link-non-color" class="btn" data-auth-link>LOGIN</a>
-        </div>
-    </header>
+    <!-- app-header -->
     <!-- 메인 공간 -->
     <main class="home-main">
         <div id="main">
@@ -29,17 +22,17 @@
             <p class="second-sub">잠든 공간의 재발견</p>
             <div class="third-btn">
                 <a href="/spaces" class="in-first-btn">공간 보기<span class="fv-btn-arrow">→</span></a>
-                <a href="/" class="in-second-btn">내 뱃지 보기<span class="fv-btn-arrow">→</span></a>
+                <a href="/badges" class="in-second-btn">내 뱃지 보기<span class="fv-btn-arrow">→</span></a>
             </div>
             <p id="user-greeting" hidden aria-live="polite"></p>
             <dl class="space-stats">
                 <div class="space-stat">
-                    <dt>실내 스페이스</dt>
-                    <dd>12+</dd>
+                    <dt>내부 테스트 공간</dt>
+                    <dd>1</dd>
                 </div>
                 <div class="space-stat">
-                    <dt>야외 스페이스</dt>
-                    <dd>8+</dd>
+                    <dt>외부 등록 예정</dt>
+                    <dd>5</dd>
                 </div>
                 <div class="space-stat">
                     <dt>내가 찾은 스페이스</dt>
@@ -49,14 +42,7 @@
         </div>
     </main>
     <!-- 내비게이션 바 공간 -->
-    <nav class="bottom-nav">
-        <a href="" id="link-non-color" aria-current="page">Home</a>
-        <a href="" id="link-non-color">User</a>
-        <label class="theme-switch" title="다크 테마 전환">
-            <span>다크 테마</span>
-            <input type="checkbox" id="theme-toggle" role="switch" aria-label="다크 테마">
-        </label>
-    </nav>
+    <!-- app-navigation -->
 </body>
 <!-- body 끝 -->
 </html>

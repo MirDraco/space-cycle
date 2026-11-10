@@ -9,6 +9,7 @@ RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
     && npm cache clean --force
 
 COPY --chown=node:node server.js LICENSE ./
+COPY --chown=node:node server/ ./server/
 COPY --chown=node:node public/ ./public/
 COPY --chown=node:node views/ ./views/
 

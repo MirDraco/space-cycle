@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+    <link rel="icon" href="/images/rounded-favicon_32.png">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/qr.css">
+    <link rel="stylesheet" href="/css/visit.css">
+    <script src="/js/theme.js"></script>
+    <script src="/js/space-data.js" defer></script>
+    <script src="/js/qr-policy.js" defer></script>
+    <script src="/js/visit-session.js" defer></script>
+    <script src="/js/visit.js" defer></script>
+    <script type="module" src="/js/auth.js"></script>
+    <title>머무르기 · Space Cycle</title>
+</head>
+<body class="app-shell">
+    <!-- app-header -->
+    <main class="page-main visit-main">
+        <p class="page-eyebrow">STAY &amp; EXPLORE · TEST</p>
+        <h1 class="page-title" id="visit-name">공간 확인 중</h1>
+        <p class="page-description" id="visit-condition">QR로 선택한 공간에서 위치와 체류 시간을 확인해요.</p>
+        <section class="visit-monitor" aria-label="체류 상태">
+            <div class="visit-timer-heading"><h2>남은 시간</h2><span class="status-pill">서버 기준</span></div>
+            <p class="visit-timer" id="visit-timer" role="timer" aria-live="off">01:00</p>
+            <progress id="visit-progress" max="60000" value="0" aria-label="서버가 확인한 체류 시간"></progress>
+            <p class="scan-status" id="visit-status" role="status" aria-live="polite" aria-atomic="true">위치 확인 버튼을 준비하고 있어요.</p>
+            <dl class="visit-metrics">
+                <div><dt>중심점까지 거리</dt><dd id="visit-distance">—</dd></div>
+                <div><dt>위치 정확도</dt><dd id="visit-accuracy">—</dd></div>
+            </dl>
+            <p class="visit-freshness" id="visit-freshness">아직 위치를 확인하지 않았어요.</p>
+        </section>
+        <div class="camera-controls">
+            <button class="page-action" id="visit-start" type="button" disabled>위치 확인하고 시작</button>
+            <button class="camera-stop" id="visit-stop" type="button" hidden>중단하고 초기화</button>
+        </div>
+        <p class="page-note">버튼을 누르면 위치 권한을 요청해요. 확인한 위도·경도·정확도를 이 서비스의 서버로 보내 반경을 판정해요. 좌표 기록은 DB나 앱 로그에 저장하지 않아요.</p>
+        <details class="scanner-help">
+            <summary>체류 조건과 위치 안내</summary>
+            <p>화면을 켜두고 이 페이지에 머물러주세요. 반경 이탈, 위치 정확도 부족, 위치·통신 끊김, 다른 화면 이동, 새로고침 시 시간은 처음부터 다시 시작해요.</p>
+            <p>정확도는 50m 이하이고, 중심점까지 거리와 정확도의 합이 100m 이하여야 해요. 실내 GPS가 불안정하면 창가 등 신호가 잘 잡히는 안전한 곳에서 다시 시도해주세요. 반경은 자동으로 넓히지 않아요.</p>
+            <p>이번 기능은 1분 체류 테스트예요. 완료해도 뱃지·보상이나 방문 기록을 저장하지 않아요. QR 링크를 열었다는 사실만으로 실제 방문을 증명하지 않으며, GPS 조작을 완전히 차단하지는 못해요.</p>
+        </details>
+        <noscript><p class="page-note">위치·체류 확인은 JavaScript가 필요해요.</p></noscript>
+        <a class="scanner-back" id="visit-back" href="/spaces">공간 정보로 돌아가기</a>
+    </main>
+    <!-- app-navigation -->
+</body>
+</html>

@@ -18,6 +18,8 @@ test('Docker deployment is reproducible, non-root and local-only on port 4500', 
     assert.match(dockerfile, /HEALTHCHECK[\s\S]*127\.0\.0\.1:4500\/healthz/);
     assert.match(dockerfile, /CMD \["node", "server\.js"\]/);
     assert.doesNotMatch(dockerfile, /^COPY\s+\.\s/m);
+    assert.match(dockerfile, /COPY --chown=node:node server\/ \.\/server\//);
+    assert.match(fs.readFileSync(path.join(root, '.dockerignore'), 'utf8'), /^!server\/\*\*$/m);
 
     const compose = fs.readFileSync(path.join(root, 'compose.yaml'), 'utf8');
     assert.match(compose, /127\.0\.0\.1:4500:4500/);
