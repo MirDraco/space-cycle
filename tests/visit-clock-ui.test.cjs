@@ -71,6 +71,14 @@ test('safe local GPS diagnostics explain old fixes without coordinates, raw time
  assert.match(h.elements.get('visit-diagnostics').textContent,/0\.1초/);
 });
 
+test('diagnostics preserve confirmation count after failure and show the active acquisition policy',()=>{
+ const h=harness();h.elements.get('visit-start').click();
+ h.sample({phase:'error',active:false,confirmedAt:null,confirmedSampleCount:1,locationTimeoutMs:15000,maxGapMs:25000,errorCode:'location_gap',locationIssue:{code:'gps_timeout',requestMs:15000,fixAgeMs:null}});
+ assert.match(h.elements.get('visit-diagnostics').textContent,/서버 확인 1회/);
+ assert.match(h.elements.get('visit-diagnostics').textContent,/획득 최대 15초.*확인 기한 25초/);
+ assert.match(h.elements.get('visit-freshness').textContent,/확인 1회.*초기화/,'cleared metrics must not imply GPS never succeeded');
+});
+
 test('delayed watchdog cannot let an unconfirmed estimate run indefinitely',()=>{
  const h=harness();h.elements.get('visit-start').click();h.sample({phase:'dwelling',active:true,elapsedMs:55000});h.advance(12000);
  assert.match(h.elements.get('visit-status').textContent,/위치 확인.*지연/);assert.equal(h.refreshes,0);assert.notEqual(h.elements.get('visit-status').dataset.phase,'complete');

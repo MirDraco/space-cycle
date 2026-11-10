@@ -1,8 +1,9 @@
 const { randomBytes } = require('node:crypto');
 const { performance } = require('node:perf_hooks');
 const { getSpace } = require('../public/js/space-data.js');
+const { readStayPolicy, validateStayPolicy } = require('./stay-policy.js');
 
-const MAX_GAP_MS = 12000;
+const MAX_GAP_MS = readStayPolicy().maxGapMs;
 const TTL_MS = 10 * 60 * 1000;
 const token = () => randomBytes(24).toString('hex');
 
@@ -27,7 +28,9 @@ function assessPosition(space, sample) {
     return { phase, distanceM, accuracyM: accuracy };
 }
 
-function createStayStore({ now = () => performance.now(), maxSessions = 500 } = {}) {
+function createStayStore({ now = () => performance.now(), maxSessions = 500,
+    policy = readStayPolicy(process.env) } = {}) {
+    const timing = validateStayPolicy(policy);
     const sessions = new Map();
     function cleanup() {
         const time = now();
@@ -46,8 +49,8 @@ function createStayStore({ now = () => performance.now(), maxSessions = 500 } = 
         return {
             id: s.id, challenge: s.challenge, space: getSpace(s.spaceId), phase: s.phase,
             elapsedMs: s.elapsedMs, requiredMs: getSpace(s.spaceId).requiredMs,
-            distanceM: s.distanceM, accuracyM: s.accuracyM, maxGapMs: MAX_GAP_MS,
-            sampleEveryMs: 3000, reason, persisted: false,
+            distanceM: s.distanceM, accuracyM: s.accuracyM, ...timing,
+            reason, persisted: false,
         };
     }
     function create(spaceId, owner = null) {
@@ -68,7 +71,7 @@ function createStayStore({ now = () => performance.now(), maxSessions = 500 } = 
         verify(s, body.challenge);
         const position = assessPosition(getSpace(s.spaceId), body);
         const time = now();
-        const gap = s.lastSeen !== null && time - s.lastSeen > MAX_GAP_MS;
+        const gap = s.lastSeen !== null && time - s.lastSeen > timing.maxGapMs;
         if (s.phase === 'complete') return snapshot(s);
         if (gap) { s.startedAt = null; s.elapsedMs = 0; }
         s.lastSeen = time;

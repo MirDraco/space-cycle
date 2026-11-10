@@ -59,14 +59,14 @@ test('first GPS acquisition gets a cold-start budget and retries a timeout witho
     h.session.stop(); await flush();
 });
 
-test('one six-second timeout during dwell recovers with a fresh fix inside the unchanged twelve-second gap', async () => {
+test('one acquisition timeout recovers with a fresh fix inside the advertised continuity budget', async () => {
     const h = harness(); await h.session.start(); h.fix(); await flush();
     await h.advance(3000); h.fix(); await flush();
     const confirmed = h.states.at(-1);
     assert.equal(confirmed.elapsedMs, 3000);
     await h.advance(3000); const failedAttempt = h.fixes.at(-1);
-    assert.equal(failedAttempt.options.timeout, 6000);
-    await h.advance(6000); failedAttempt.error({ code: 3 }); await flush();
+    assert.equal(failedAttempt.options.timeout, 15000);
+    await h.advance(15000); failedAttempt.error({ code: 3 }); await flush();
     assert.equal(h.session.isActive(), true);
     assert.equal(h.states.at(-1).phase, 'dwelling');
     assert.equal(h.states.at(-1).locationPending, true);
@@ -75,11 +75,11 @@ test('one six-second timeout during dwell recovers with a fresh fix inside the u
     assert.equal(h.samples.length, 2, 'a failed acquisition sends no heartbeat');
     await h.advance(250);
     assert.equal(h.fixes.at(-1).options.maximumAge, 0);
-    assert.ok(h.fixes.at(-1).options.timeout <= 2750, 'retry cannot outlive the existing gap deadline');
+    assert.ok(h.fixes.at(-1).options.timeout <= 1750, 'retry must retain five seconds for transport inside the gap');
     await h.advance(500); h.fix(); await flush();
     assert.equal(h.states.at(-1).phase, 'dwelling');
     assert.equal(h.states.at(-1).locationPending, false);
-    assert.equal(h.states.at(-1).elapsedMs, 12750, 'real server continues the same stay with a fresh timely fix');
+    assert.equal(h.states.at(-1).elapsedMs, 21750, 'real server continues the same stay with a fresh timely fix');
     assert.equal(h.samples.at(-1).result.reason, null);
     assert.equal(h.cancels.length, 0);
     h.session.stop(); await flush();
@@ -88,11 +88,11 @@ test('one six-second timeout during dwell recovers with a fresh fix inside the u
 test('retrying never extends the server gap; expired or stopped attempts cannot submit late fixes', async () => {
     const h = harness(); await h.session.start(); h.fix(); await flush();
     await h.advance(3000); const old = h.fixes.at(-1);
-    await h.advance(6000); old.error({ code: 3 }); await flush();
+    await h.advance(15000); old.error({ code: 3 }); await flush();
     await h.advance(250); const retry = h.fixes.at(-1);
     const count = h.samples.length;
     h.fix(old); await flush(); assert.equal(h.samples.length, count, 'a settled timeout cannot later succeed');
-    await h.advance(2750);
+    await h.advance(6750);
     assert.equal(h.session.isActive(), false);
     assert.equal(h.states.at(-1).errorCode, 'location_gap');
     assert.equal(h.states.at(-1).elapsedMs, 0);
@@ -122,7 +122,7 @@ test('a recovered but stale GPS fix is never reused as a fresh sample', async ()
     assert.equal(h.session.isActive(), true, 'stale results are skipped rather than immediately cancelling');
     assert.equal(h.states.at(-1).locationIssue.code, 'gps_stale');
     assert.equal(h.samples.length, count);
-    await h.advance(2750);
+    await h.advance(15750);
     assert.equal(h.session.isActive(), false, 'stale data cannot extend the original continuity deadline');
     assert.equal(h.states.at(-1).errorCode, 'location_gap');
     assert.equal(h.states.at(-1).locationIssue.code, 'gps_stale', 'failure keeps the last safe diagnostic');
@@ -165,7 +165,7 @@ test('state listeners cannot overwrite the stored safe diagnostic', async () => 
     const h = harness(); await h.session.start(); h.fix(); await flush();
     const first = h.time; await h.advance(3000); h.fix(h.fixes.at(-1), first); await flush();
     h.states.at(-1).locationIssue.code = 'changed-by-listener';
-    await h.advance(12000);
+    await h.advance(25000);
     assert.equal(h.session.isActive(), false);
     assert.equal(h.states.at(-1).locationIssue.code, 'gps_duplicate');
 });
@@ -191,7 +191,7 @@ test('old or repeated device responses cannot prolong a stay indefinitely or pro
         await h.advance(i === 0 ? 3000 : 250);
         if (h.session.isActive()) { h.fix(h.fixes.at(-1), first); await flush(); }
     }
-    if (h.session.isActive()) await h.advance(12000);
+    if (h.session.isActive()) await h.advance(25000);
     assert.equal(h.session.isActive(), false);
     assert.equal(h.states.at(-1).errorCode, 'location_gap');
     assert.equal(h.states.at(-1).elapsedMs, 0);

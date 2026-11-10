@@ -43,6 +43,23 @@
         let deadlineAt = 0;
         let locationIssue = null;
         let locationSample = null;
+        let timing = null;
+        let confirmedSampleCount = 0;
+        function readTiming(state) {
+            const keys = ['sampleEveryMs', 'locationTimeoutMs', 'initialTimeoutMs', 'networkReserveMs', 'maxGapMs'];
+            const value = Object.fromEntries(keys.map(key => [key, state?.[key]]));
+            if (value.sampleEveryMs !== 3000 || value.initialTimeoutMs !== 30000 ||
+                !keys.every(key => Number.isSafeInteger(value[key])) ||
+                value.locationTimeoutMs < 6000 || value.locationTimeoutMs > 20000 ||
+                value.networkReserveMs < 2000 || value.networkReserveMs > 10000 ||
+                value.maxGapMs < 12000 || value.maxGapMs > 40000 ||
+                value.sampleEveryMs + value.locationTimeoutMs + value.networkReserveMs >= value.maxGapMs ||
+                value.locationTimeoutMs + value.networkReserveMs >= value.initialTimeoutMs ||
+                (timing && keys.some(key => value[key] !== timing[key]))) {
+                throw { code: 'invalid_response' };
+            }
+            return Object.freeze(value);
+        }
         const current = run => active && generation === run;
         const emit = (phase, message, extra = {}) => onState({
             phase, message, active, elapsedMs: snapshot?.elapsedMs || 0,
@@ -51,7 +68,9 @@
             maxGapMs: snapshot?.maxGapMs ?? 0, sampleEveryMs: snapshot?.sampleEveryMs ?? 0,
             confirmedAt: lastConfirmedAt, locationPending: false,
             locationIssue: locationIssue && { ...locationIssue },
-            locationSample: locationSample && { ...locationSample }, ...extra,
+            locationSample: locationSample && { ...locationSample },
+            ...(timing || {}), confirmedSampleCount,
+            confirmationDeadlineAt: active && timing ? deadlineAt : null, ...extra,
         });
         function clearTimers() {
             if (pollTimer !== null) unschedule(pollTimer);
@@ -84,7 +103,7 @@
             const initial = lastConfirmedAt === null;
             stop(initial
                 ? '처음 위치를 30초 동안 서버에서 확인하지 못했어요. 위치 설정과 연결 상태를 확인한 뒤 다시 시작해주세요. (location_timeout)'
-                : '마지막 서버 확인 후 12초 동안 새 위치 확인이 완료되지 않아 초기화했어요. 위치 설정과 연결 상태를 확인한 뒤 다시 시작해주세요. (location_gap)',
+                : `새 위치 확인이 ${timing.maxGapMs / 1000}초 기한 안에 완료되지 않아 초기화했어요. 위치 설정과 연결 상태를 확인한 뒤 다시 시작해주세요. (location_gap)`,
             'error', initial ? 'location_timeout' : 'location_gap');
         }
         function armDeadline(run, milliseconds) {
@@ -125,12 +144,16 @@
             lastFixTimestamp = timestamp;
             const { latitude, longitude, accuracy } = position.coords || {};
             try {
+                const sentAt = now();
                 const next = await request(`/api/stays/${snapshot.id}/sample`, {
                     challenge: snapshot.challenge, latitude, longitude, accuracy,
                 }, { signal: controller.signal });
                 if (!current(run)) { discard(next); return; }
+                if (now() >= deadlineAt) { discard(next); deadlineExpired(); return; }
+                readTiming(next);
                 snapshot = next;
                 lastConfirmedAt = now();
+                confirmedSampleCount++;
                 if (next.phase === 'complete') {
                     active = false;
                     clearTimers();
@@ -151,9 +174,10 @@
                     uncertain: '위치가 불확실해 시간을 초기화했어요. 정확도가 좋아지면 다시 시작해요.',
                 };
                 if (!Object.hasOwn(messages, next.phase)) throw new Error('invalid_response');
+                // Count reply latency inside the continuity budget instead of restarting it.
+                armDeadline(run, Math.max(0, sentAt + timing.maxGapMs - now()));
                 emit(next.phase, messages[next.phase]);
-                armDeadline(run, next.maxGapMs);
-                pollTimer = schedule(() => locate(run), next.sampleEveryMs);
+                pollTimer = schedule(() => locate(run), timing.sampleEveryMs);
             } catch (error) {
                 if (current(run)) failRequest(error);
             }
@@ -161,6 +185,9 @@
         function locate(run) {
             if (!current(run)) return;
             if (now() >= deadlineAt) { deadlineExpired(); return; }
+            const availableMs = deadlineAt - now() - timing.networkReserveMs;
+            // Leave time for authentication, upload and reply; the unchanged deadline still runs.
+            if (availableMs <= 0) return;
             const requestedAt = now();
             // A location attempt settles once, even if a broken provider delivers late callbacks.
             let settled = false;
@@ -186,7 +213,7 @@
                     };
                     fail(messages[error?.code] || '위치 확인에 실패해 시간을 초기화했어요.');
                 }, { enableHighAccuracy: true, maximumAge: 0,
-                    timeout: Math.max(1, Math.min(lastConfirmedAt === null ? 15000 : 6000, deadlineAt - now())) });
+                    timeout: Math.max(1, Math.min(timing.locationTimeoutMs, availableMs)) });
             } catch { fail('이 브라우저에서 위치를 확인할 수 없어요.'); }
         }
         async function start() {
@@ -197,6 +224,8 @@
             lastConfirmedAt = null;
             lastFixTimestamp = -Infinity;
             locationIssue = locationSample = null;
+            timing = null;
+            confirmedSampleCount = 0;
             controller = new AbortController();
             emit('requesting', '위치 확인을 준비하고 있어요.');
             armDeadline(run, 30000);
@@ -204,7 +233,8 @@
                 const next = await request('/api/stays', { spaceId }, { signal: controller.signal });
                 if (!current(run)) { discard(next); return; }
                 snapshot = next;
-                armDeadline(run, 30000);
+                timing = readTiming(next);
+                armDeadline(run, timing.initialTimeoutMs);
                 emit('locating', '위치 권한을 허용해주세요. 처음 위치를 찾는 중이에요.');
                 locate(run);
             } catch (error) {

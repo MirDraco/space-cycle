@@ -12,10 +12,12 @@
         const tracking = state.active === true && state.phase === 'dwelling' && validAnchor;
         const canEstimate = tracking && state.locationPending !== true;
         const gapLimit = Number.isFinite(state.maxGapMs) && state.maxGapMs > 0 ? state.maxGapMs : 0;
+        const displayLimit = validAnchor && Number.isFinite(state.confirmationDeadlineAt)
+            ? Math.min(gapLimit, Math.max(0, state.confirmationDeadlineAt - state.confirmedAt)) : gapLimit;
         const ageMs = validAnchor ? Math.max(0, now - state.confirmedAt) : 0;
-        const stale = tracking && (gapLimit === 0 || ageMs >= gapLimit);
+        const stale = tracking && (displayLimit === 0 || ageMs >= displayLimit);
         const elapsedMs = serverComplete ? requiredMs
-            : Math.min(requiredMs, confirmedMs + (canEstimate ? Math.min(ageMs, gapLimit) : 0));
+            : Math.min(requiredMs, confirmedMs + (canEstimate ? Math.min(ageMs, displayLimit) : 0));
         return {
             elapsedMs, remainingMs: requiredMs - elapsedMs, serverComplete, stale,
             awaitingFinal: canEstimate && !stale && elapsedMs >= requiredMs,

@@ -26,6 +26,9 @@ test('Docker deployment is reproducible, non-root and local-only on port 4500', 
     assert.match(compose, /restart: unless-stopped/);
     assert.match(compose, /read_only: true/);
     assert.match(compose, /SPACE_CYCLE_DB: \/app\/data\/visits\.sqlite/);
+    assert.match(compose, /SPACE_CYCLE_LOCATION_TIMEOUT_MS: "15000"/);
+    assert.match(compose, /SPACE_CYCLE_MAX_GAP_MS: "25000"/);
+    assert.match(compose, /SPACE_CYCLE_NETWORK_RESERVE_MS: "5000"/);
     assert.match(compose, /visits-data:\/app\/data/);
     assert.match(compose, /^volumes:\n  visits-data:/m);
     assert.match(dockerfile, /mkdir -p \/app\/data.*chown node:node \/app\/data/);

@@ -52,7 +52,9 @@
             : display.awaitingFinal ? '마지막 위치 확인 중… 서버 승인 후 완료돼요.' : latest.message;
         if (status.textContent !== message) status.textContent = message;
         status.dataset.displayPhase = display.stale ? 'stale' : display.awaitingFinal ? 'confirming' : latest.phase;
-        if (latest.confirmedAt === null) freshness.textContent = '아직 위치를 확인하지 않았어요.';
+        if (latest.confirmedAt === null) freshness.textContent = latest.confirmedSampleCount > 0
+            ? `이번 시도에서 서버 확인 ${latest.confirmedSampleCount}회 후 중단했어요. 진행 시간과 거리 표시는 초기화됐어요.`
+            : '아직 위치를 확인하지 않았어요.';
         else if (latest.phase === 'complete') freshness.textContent = '서버에서 마지막 위치와 1분 체류를 확인했어요.';
         else freshness.textContent = `마지막 서버 확인 ${Math.floor(Math.max(0, performance.now() - latest.confirmedAt) / 1000)}초 전 · ${latest.locationPending ? '위치 재확인 중 · 마지막 서버 확인값 표시' : '남은 시간은 예상 표시'}`;
     }
@@ -67,6 +69,10 @@
         const parts = [];
         if (Number.isFinite(sample?.requestMs)) parts.push(`위치 응답 대기 ${(Math.max(0, sample.requestMs) / 1000).toFixed(1)}초`);
         if (Number.isFinite(sample?.fixAgeMs)) parts.push(`측정값 나이 ${(sample.fixAgeMs / 1000).toFixed(1)}초`);
+        if (Number.isSafeInteger(state.confirmedSampleCount) && state.confirmedSampleCount >= 0) parts.push(`서버 확인 ${state.confirmedSampleCount}회`);
+        if (Number.isSafeInteger(state.locationTimeoutMs) && Number.isSafeInteger(state.maxGapMs)) {
+            parts.push(`위치 획득 최대 ${state.locationTimeoutMs / 1000}초 · 확인 기한 ${state.maxGapMs / 1000}초`);
+        }
         if (issue) parts.push(issue.code);
         if (diagnostics) {
             diagnostics.textContent = parts.join(' · ');

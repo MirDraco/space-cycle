@@ -45,7 +45,7 @@ test('outside, uncertain accuracy and interrupted samples reset continuous time'
     advance(5000);s=store.sample(s.id,{challenge:s.challenge,...center,accuracy:80});
     assert.equal(s.phase,'uncertain');assert.equal(s.elapsedMs,0);
     s=store.sample(s.id,{challenge:s.challenge,...center});
-    advance(12001);s=store.sample(s.id,{challenge:s.challenge,...center});
+    advance(25001);s=store.sample(s.id,{challenge:s.challenge,...center});
     assert.equal(s.phase,'dwelling');assert.equal(s.elapsedMs,0);assert.equal(s.reason,'gap');
 });
 

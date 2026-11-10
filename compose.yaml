@@ -11,6 +11,10 @@ services:
     environment:
       NODE_ENV: production
       SPACE_CYCLE_DB: /app/data/visits.sqlite
+      # Server publishes these validated budgets to every visit session.
+      SPACE_CYCLE_LOCATION_TIMEOUT_MS: "15000"
+      SPACE_CYCLE_MAX_GAP_MS: "25000"
+      SPACE_CYCLE_NETWORK_RESERVE_MS: "5000"
     volumes:
       - visits-data:/app/data
     # A host-installed cloudflared can reach this without a public app port.

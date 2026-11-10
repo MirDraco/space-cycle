@@ -51,11 +51,11 @@ test('server sample reply arriving after stop cannot resurrect elapsed time',asy
     assert.throws(()=>h.store.inspect(h.creates[0].response.id),/session_missing/);
 });
 
-test('network errors reset and silence after a valid fix hits the 12-second deadline',async()=>{
+test('network errors reset and silence after a valid fix hits the server-provided deadline',async()=>{
     const failed=harness({failSample:true});failed.session.start();await flush();failed.fix();await flush();
     assert.equal(failed.states.at(-1).phase,'error');assert.equal(failed.states.at(-1).elapsedMs,0);
     const silent=harness();silent.session.start();await flush();silent.fix();await flush();
-    await silent.advance(3000);await silent.advance(9001);
+    await silent.advance(3000);await silent.advance(22001);
     assert.equal(silent.states.at(-1).phase,'error');assert.equal(silent.states.at(-1).elapsedMs,0);
     assert.equal(silent.session.isActive(),false);
 });

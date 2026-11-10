@@ -29,6 +29,12 @@ test('a known pending location retry holds confirmed progress instead of predict
     assert.equal(clock()(state, 113000).stale, true, 'a paused display still has the original deadline');
 });
 
+test('the actual confirmation deadline bounds projection even when a response consumed part of the gap', () => {
+    const state = { ...dwelling, maxGapMs: 25000, confirmationDeadlineAt: 120000 };
+    assert.equal(clock()(state, 120001).stale, true, 'reply latency must not buy extra unconfirmed display time');
+    assert.equal(clock()(state, 130000).elapsedMs, 40000);
+});
+
 test('zero on the display means awaiting final verification, never local completion', () => {
     const read = clock();
     const near = { ...dwelling, elapsedMs: 59000 };

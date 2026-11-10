@@ -1,9 +1,10 @@
 const test=require('node:test');const assert=require('node:assert/strict');
 const {createVisitSession}=require('../public/js/visit-session.js');
+const {readStayPolicy}=require('../server/stay-policy.js');
 const tick=()=>new Promise(r=>setImmediate(r));
 async function complete(persisted,newlyFound){
  let success;const states=[];let samples=0;
- const response={id:'session',challenge:'challenge',requiredMs:60000,elapsedMs:0,maxGapMs:12000,sampleEveryMs:3000,phase:'waiting',distanceM:0,accuracyM:5};
+ const response={id:'session',challenge:'challenge',requiredMs:60000,elapsedMs:0,...readStayPolicy({}),phase:'waiting',distanceM:0,accuracyM:5};
  const session=createVisitSession({spaceId:'indoor-01',geolocation:{getCurrentPosition:ok=>{success=ok;}},request:async route=>{
   if(route==='/api/stays')return response;
   if(route.endsWith('/cancel'))return null;
