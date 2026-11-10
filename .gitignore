@@ -1,4 +1,14 @@
-package.json
-package-lock.json
-/node_modules
+/node_modules/
 needToDo.txt
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*service-account*.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
+.DS_Store
+npm-debug.log*
+coverage/

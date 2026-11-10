@@ -1,0 +1,21 @@
+**
+!Dockerfile
+!package.json
+!package-lock.json
+!server.js
+!LICENSE
+!public/
+!public/**
+!views/
+!views/**
+
+# Defense in depth even if a credential is accidentally placed below an asset directory.
+**/.env
+**/.env.*
+**/secrets
+**/secrets/**
+**/*service-account*.json
+**/*serviceAccount*.json
+**/*firebase-adminsdk*.json
+**/*.pem
+**/*.key

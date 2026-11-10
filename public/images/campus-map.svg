@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 1000" fill="none">
+  <title>Abstract campus paths and spaces</title>
+  <!-- Decorative only: these shapes do not represent real campus locations. -->
+  <g stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Quiet outlines of buildings, courtyards and small green spaces. -->
+    <g opacity=".64">
+      <path d="M-24 112H122V168H76V226H-24Z"/>
+      <path d="M-12 126H108V154H62V212H-12"/>
+      <rect x="190" y="30" width="126" height="76" rx="6" transform="rotate(-12 253 68)"/>
+      <path d="M204 54L299 34M214 91L308 71"/>
+      <rect x="330" y="154" width="128" height="80" rx="8" transform="rotate(16 394 194)"/>
+      <path d="M382 153L360 230"/>
+      <path d="M42 350H148V398H102V450H42Z"/>
+      <path d="M56 364H134V384H88V436H56Z"/>
+      <rect x="244" y="445" width="136" height="96" rx="7" transform="rotate(-9 312 493)"/>
+      <path d="M266 463L355 449M274 514L364 500"/>
+      <path d="M-26 596H102V666H60V704H-26"/>
+      <rect x="170" y="735" width="110" height="138" rx="6" transform="rotate(13 225 804)"/>
+      <path d="M199 757L177 850M249 769L228 861"/>
+      <path d="M346 865H472V916H418V966H346Z"/>
+      <path d="M360 879H458V902H404V952H360Z"/>
+      <path d="M-20 871C56 835 115 853 131 904C146 952 94 997 24 1008"/>
+      <path d="M-18 889C43 860 96 870 108 910C120 946 80 981 24 990"/>
+    </g>
+    <!-- Soft boundary contours suggest open spaces, not a street-map UI. -->
+    <g opacity=".38">
+      <path d="M-40 265C25 231 132 239 174 286S187 389 223 420S300 435 330 391S320 301 376 279S487 296 575 254"/>
+      <path d="M-34 281C30 250 121 256 160 300S172 397 211 434S309 453 345 402S335 313 382 297S491 316 575 274"/>
+      <path d="M-30 741C58 779 110 758 142 704S191 601 259 616S314 695 379 713S472 693 567 738"/>
+      <path d="M-27 760C65 797 126 774 158 715S196 621 253 635S306 713 373 732S473 713 567 758"/>
+    </g>
+    <!-- Broken walking path, with only a few non-interactive discovery rings. -->
+    <path d="M-30 61C73 45 102 81 132 117S198 190 214 231S175 318 198 356S259 395 292 410S411 421 430 475S373 574 320 589S202 575 171 618S140 693 109 731S38 790 56 838S139 885 169 918S211 978 197 1030" stroke-width="1.8" stroke-dasharray="4 9" opacity=".84"/>
+    <path d="M-32 513C29 490 76 515 113 541S183 579 225 563" stroke-dasharray="3 10" opacity=".5"/>
+    <path d="M340 69L340 85M332 77H348M83 578V590M77 584H89M411 785V801M403 793H419" opacity=".5"/>
+  </g>
+  <g stroke="white" stroke-width="1.5">
+    <circle cx="214" cy="231" r="12" opacity=".9"/>
+    <circle cx="214" cy="231" r="24" opacity=".22"/>
+    <circle cx="320" cy="589" r="13" opacity=".9"/>
+    <circle cx="320" cy="589" r="27" opacity=".2"/>
+    <circle cx="169" cy="918" r="10" opacity=".75"/>
+  </g>
+  <g fill="white">
+    <circle cx="214" cy="231" r="3.5" opacity=".9"/>
+    <circle cx="320" cy="589" r="4" opacity=".9"/>
+    <circle cx="169" cy="918" r="3" opacity=".8"/>
+  </g>
+</svg>

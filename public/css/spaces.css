@@ -1,0 +1,342 @@
+/* Mobile web app: one phone-width layout, without a separate desktop version. */
+.spaces-page {
+    --space-photo-bg: #DEE8E8;
+    --space-photo-line: rgba(19, 64, 116, 0.09);
+    --space-tag-bg: rgba(19, 64, 116, 0.08);
+    width: 100%;
+    max-width: 480px;
+    margin-inline: auto;
+}
+
+:root[data-theme="dark"] .spaces-page {
+    --space-photo-bg: #102D50;
+    --space-photo-line: rgba(141, 169, 196, 0.1);
+    --space-tag-bg: rgba(141, 169, 196, 0.12);
+}
+
+.spaces-page a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.spaces-page .bottom-nav {
+    width: 100%;
+    max-width: 480px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+}
+
+.site-logo {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+}
+
+.skip-link {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 5;
+    padding: 12px 16px;
+    border: 1px solid var(--text);
+    border-radius: 8px;
+    background: var(--surface);
+    transform: translateY(-160%);
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+
+.spaces-main {
+    width: 100%;
+    min-height: calc(100svh - 65px);
+    margin: 0 auto;
+    padding: 16px 20px calc(108px + env(safe-area-inset-bottom));
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.breadcrumb a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.spaces-intro {
+    margin: 22px 0 32px;
+}
+
+.page-eyebrow {
+    margin-bottom: 12px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.17em;
+}
+
+.spaces-intro h1 {
+    font-size: 1.875rem;
+    line-height: 1.25;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    word-break: keep-all;
+}
+
+.page-description {
+    margin-top: 14px;
+    max-width: 30ch;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+    word-break: keep-all;
+}
+
+.list-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-bottom: 16px;
+}
+
+.list-heading h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.space-count {
+    padding: 4px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--surface);
+}
+
+.list-note {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.space-list {
+    display: grid;
+    gap: 24px;
+    list-style: none;
+}
+
+.space-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: 0 14px 36px var(--shadow);
+}
+
+.space-photo-placeholder {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 200px;
+    border-radius: 19px 19px 0 0;
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+    background-color: var(--space-photo-bg);
+    background-image:
+        linear-gradient(var(--space-photo-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--space-photo-line) 1px, transparent 1px);
+    background-size: 44px 44px;
+}
+
+.photo-index,
+.photo-caption {
+    position: absolute;
+    left: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+}
+
+.photo-index {
+    top: 18px;
+}
+
+.photo-caption {
+    bottom: 18px;
+    letter-spacing: 0;
+}
+
+.photo-placeholder-content {
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    padding: 44px 20px;
+    font-size: 13px;
+}
+
+.space-card-content {
+    min-width: 0;
+    padding: 24px;
+}
+
+.space-tag {
+    display: inline-flex;
+    padding: 5px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--space-tag-bg);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.space-card h3 {
+    margin-top: 16px;
+    font-size: 1.4375rem;
+    font-weight: 750;
+    line-height: 1.35;
+    letter-spacing: -0.04em;
+    word-break: keep-all;
+}
+
+.space-description {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+    word-break: keep-all;
+}
+
+.space-meta {
+    display: grid;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.space-meta > div {
+    display: grid;
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 8px;
+}
+
+.space-meta dt {
+    color: var(--muted);
+}
+
+.space-meta dd {
+    word-break: keep-all;
+}
+
+.space-details {
+    margin-top: 24px;
+}
+
+.space-details summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 48px;
+    padding: 12px 18px;
+    border-radius: 999px;
+    background: var(--primary);
+    color: var(--primary-text);
+    list-style: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.space-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.space-details summary:hover {
+    outline: 1px solid var(--primary);
+    outline-offset: 3px;
+}
+
+.space-details summary:focus-visible {
+    outline: 2px solid var(--muted);
+    outline-offset: 4px;
+}
+
+.details-open-label,
+.space-details[open] .details-closed-label {
+    display: none;
+}
+
+.space-details[open] .details-open-label {
+    display: inline;
+}
+
+.space-details[open] summary svg {
+    transform: rotate(180deg);
+}
+
+.space-details-body {
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.8;
+    word-break: keep-all;
+}
+
+.space-details-body p + p {
+    margin-top: 10px;
+}
+
+.spaces-footnote {
+    margin-top: 22px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+    word-break: keep-all;
+}
+
+@media (max-width: 380px) {
+    .spaces-main {
+        padding-inline: 16px;
+    }
+
+    .space-card-content {
+        padding: 20px;
+    }
+
+    .list-note {
+        font-size: 11px;
+    }
+}
+
+@media (forced-colors: active) {
+    .space-photo-placeholder {
+        background-image: none;
+    }
+
+    .space-details summary {
+        border: 1px solid ButtonText;
+    }
+}

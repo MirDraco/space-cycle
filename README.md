@@ -1,5 +1,9 @@
 # Space Cycle
 
+> 모바일 웹앱 개발 중입니다. 현재 메인·로그인 화면과 테스트 공간 목록을 제공하며, QR·GPS 방문 인증·체류·보상은 아직 준비 중입니다. 아래 핵심 기능과 흐름도는 개발 목표입니다.
+>
+> 로컬 실행·Docker 배포·Cloudflare Tunnel 연결: [DEPLOYMENT.md](DEPLOYMENT.md)
+
 ## 1. 개발 배경 (Motivation)
 
 대학교 캠퍼스에는 잘 알려지지 않아 잘 사용되지 않는 '유휴 공간'들이 존재합니다.
