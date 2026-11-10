@@ -125,6 +125,15 @@ IMAGE_TAG=<정상 커밋 태그> docker compose up -d --no-build --wait --wait-t
 - **`docker compose down -v`, 볼륨 prune/삭제 금지.** 재빌드/up/일반 restart는 기록을 유지한다. 백업은 SQLite backup API로 일관된 사본을 만든 뒤 별도 보관하며, 실행 중 DB 파일 하나만 복사하면 WAL 기록을 놓칠 수 있다. 백업·탈퇴 삭제 요청은 계정 ID가 포함된 개인정보로 취급한다.
 - 홈 숫자는 기존 Firestore `foundSpaceCount`가 아닌 서버의 검증된 고유 완료 행을 읽는다. 과거 테스트는 저장 기능이 없었으므로 소급 집계하지 않는다. Google 로그인 후 향설생활관2를 한 번 완료하면 1, 다시 완료해도 1이어야 한다.
 
+## 모바일 스타일·체류 오류 점검
+
+- 앱 CSS는 서버가 고정 allowlist의 로컬 파일을 HTML `<style>`로 포함한다. CSS 하위 요청이나 외부 글꼴이 실패해도 레이아웃·색상은 유지한다. 기존 `public/css/` 원본을 수정하는 방식은 그대로다.
+- 모든 로컬 스크립트는 공개 자산/템플릿 내용 해시 `?v=`를 공유한다. HTML과 JS/CSS는 `Cache-Control: no-store`; 화면 하단과 `X-SpaceCycle-Release` 헤더로 버전을 확인한다. 관리자 프록시 캐시 규칙은 이 헤더를 존중해야 한다.
+- `auth-policy.js`도 같은 버전으로 먼저 로드하며, 버전 없는 ESM 내부 import를 남기지 않는다. 외부 Firebase SDK는 고정 버전이다.
+- 체류 요청은 같은 사이트의 Cloudflare 보안 쿠키를 보존하는 `credentials: same-origin`을 사용하되 인증은 계속 검증된 Bearer 토큰만으로 처리한다. JSON 401에만 Firebase 토큰을 새로 받아 1회 재시도하고, 임의 POST/저장 실패를 자동 반복하지 않는다.
+- 실패 문구는 `invalid_token`, `origin_denied`, `edge_blocked`, `capacity`, `save_failed`, `network_error` 등으로 구분한다. 화면 버전과 오류 코드만 공유해 진단하며 토큰/비밀번호/정확한 사용자 위치를 요구하지 않는다. `edge_blocked`는 HTML 보안 응답이며 앱 인증 실패와 다르다.
+- 휴대폰에서만 재현되면 주소·화면 버전·표시 오류와 스크린샷을 확인한다. 에뮬레이션에서 CSS가 정상이거나 모의 서명으로 통과했다고 실제 사용자 기기 오류가 해결됐다고 단정하지 않는다.
+
 ## 공식 문서
 
 - https://docs.docker.com/guides/nodejs/containerize/

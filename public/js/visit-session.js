@@ -4,6 +4,31 @@
     if (typeof module === 'object' && module.exports) module.exports = api;
     else root.SpaceCycleVisit = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, () => {
+    function requestFailure(error) {
+        const messages = {
+            login_required: '로그인 상태를 확인할 수 없어요. 로그아웃 후 Google로 다시 로그인해주세요.',
+            invalid_token: '로그인이 만료되었거나 확인되지 않았어요. 로그아웃 후 Google로 다시 로그인해주세요.',
+            identity_changed: '계정이 바뀌었어요. 현재 계정으로 다시 시작해주세요.',
+            origin_denied: '접속 주소가 허용되지 않았어요. https://spacecycle.space에서 다시 열어주세요.',
+            edge_blocked: '사이트 보안 확인이 요청을 막았어요. 최신 화면을 다시 불러온 뒤 시도해주세요.',
+            capacity: '진행 중인 요청이 많아요. 잠시 후 다시 시작해주세요.',
+            not_configured: '이 공간은 아직 체류할 수 없어요. 공간 목록에서 다시 선택해주세요.',
+            session_missing: '체류 세션이 만료되었어요. 다시 시작해주세요.',
+            stale_challenge: '체류 요청 순서가 맞지 않아요. 최신 화면을 다시 불러온 뒤 시작해주세요.',
+            wrong_owner: '시작할 때의 계정과 달라요. 현재 계정으로 다시 시작해주세요.',
+            invalid_payload: '화면과 서버 버전이 맞지 않아요. 최신 화면을 다시 불러와주세요.',
+            invalid_position: '위치 정보를 확인할 수 없어요. 위치 권한을 확인하고 다시 시작해주세요.',
+            save_failed: '완료 기록을 저장하지 못했어요. 이미 저장된 기록은 유지되며 잠시 후 다시 시도해주세요.',
+            auth_unavailable: '인증 서버에 일시적으로 연결할 수 없어요. 잠시 후 다시 시도해주세요.',
+            invalid_response: '서버에서 예상과 다른 응답이 왔어요. 최신 화면을 다시 불러와주세요.',
+            network_error: '서버 연결이 끊겼어요. 연결 상태를 확인하고 다시 시도해주세요.',
+            request_timeout: '서버 응답을 기다리다 중단됐어요. 잠시 후 다시 시도해주세요.',
+            server_error: '서버에서 요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요.',
+            cancelled: '요청을 중단했어요. 다시 시작해주세요.',
+        };
+        const code = Object.hasOwn(messages, error?.code) ? error.code : 'server_error';
+        return { code, message: `${messages[code]} (${code})` };
+    }
     function createVisitSession({ spaceId, geolocation, request, onState,
         now = () => performance.now(), wallNow = () => Date.now(),
         schedule = (fn, ms) => setTimeout(fn, ms), unschedule = id => clearTimeout(id) }) {
@@ -32,7 +57,7 @@
             // Best effort only: a lost cancellation cannot resume in this page, and server TTL bounds it.
             Promise.resolve().then(() => request(`/api/stays/${s.id}/cancel`, { challenge: s.challenge }, { keepalive: true })).catch(() => {});
         }
-        function stop(message = '체류를 중단하고 시간을 초기화했어요.', phase = 'stopped') {
+        function stop(message = '체류를 중단하고 시간을 초기화했어요.', phase = 'stopped', errorCode = null) {
             generation++;
             active = false;
             clearTimers();
@@ -41,9 +66,13 @@
             discard(snapshot);
             snapshot = null;
             lastConfirmedAt = null;
-            emit(phase, message);
+            emit(phase, message, { errorCode });
         }
         function fail(message) { stop(message, 'error'); }
+        function failRequest(error) {
+            const failure = requestFailure(error);
+            stop(failure.message, 'error', failure.code);
+        }
         function armDeadline(run, milliseconds) {
             if (watchdog !== null) unschedule(watchdog);
             watchdog = schedule(() => {
@@ -90,8 +119,8 @@
                 emit(next.phase, messages[next.phase]);
                 armDeadline(run, next.maxGapMs);
                 pollTimer = schedule(() => locate(run), next.sampleEveryMs);
-            } catch {
-                if (current(run)) fail('서버와 연결하지 못해 초기화했어요. 인터넷을 확인하고 다시 시작해주세요.');
+            } catch (error) {
+                if (current(run)) failRequest(error);
             }
         }
         function locate(run) {
@@ -124,8 +153,8 @@
                 snapshot = next;
                 emit('locating', '위치 권한을 허용해주세요. 처음 위치를 찾는 중이에요.');
                 locate(run);
-            } catch {
-                if (current(run)) fail('체류 테스트를 시작하지 못했어요. 인터넷 연결을 확인해주세요.');
+            } catch (error) {
+                if (current(run)) failRequest(error);
             }
         }
         return Object.freeze({ start, stop, isActive: () => active });

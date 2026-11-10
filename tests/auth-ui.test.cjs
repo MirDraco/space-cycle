@@ -82,6 +82,13 @@ function harness(options = {}) {
 }
 const fakeUser = (uid = 'fixture-a', getIdToken = async () => 'test-only-token') => ({ uid, displayName: '테스트', getIdToken });
 
+test('Firebase token refresh is forwarded without bypassing identity revision checks',async()=>{
+    const h=harness();const refresh=[];
+    h.change(fakeUser('A',async force=>{refresh.push(force);return 'token';}));await settle();
+    await h.window.SpaceCycleAuth.getToken(true);
+    assert.equal(refresh.at(-1),true);
+});
+
 test('auth readiness is observable before the first callback and every account change', async () => {
     const h = harness({ pathname: '/visit', search: '?space=indoor-01' });
     assert.ok(h.window.SpaceCycleAuth, 'window.SpaceCycleAuth must be available');

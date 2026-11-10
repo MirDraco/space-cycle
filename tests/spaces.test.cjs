@@ -36,6 +36,26 @@ test.after(async () => {
     if (server) await new Promise(resolve => server.close(resolve));
 });
 
+test('mobile page embeds complete local CSS and versions script dependencies without caching HTML',async()=>{
+    const response=await fetch(`${base}/visit?space=indoor-01`);
+    assert.equal(response.headers.get('cache-control'),'no-store');
+    const html=await response.text();
+    assert.match(html,/<style data-source="\/css\/style.css">/);
+    assert.match(html,/<style data-source="\/css\/visit.css">/);
+    assert.doesNotMatch(html,/<link[^>]*href="\/css\//);
+    const version=html.match(/name="spacecycle-release" content="([a-f0-9]{16})"/)?.[1];assert.ok(version);
+    const scripts=[...html.matchAll(/src="(\/(?:js|vendor)\/[^\"]+)"/g)].map(x=>x[1]);
+    assert.ok(scripts.includes(`/js/auth-policy.js?v=${version}`));
+    for(const src of scripts){assert.ok(src.endsWith(`?v=${version}`));const asset=await fetch(base+src);assert.equal(asset.status,200);}
+});
+
+test('HTTP visitors are redirected to the canonical HTTPS site behind the tunnel',async()=>{
+    const r=await new Promise((resolve,reject)=>{
+        const request=require('node:http').get(`${base}/visit?space=indoor-01`,{headers:{Host:'spacecycle.space','X-Forwarded-Proto':'http'}},response=>{response.resume();resolve(response);});request.on('error',reject);
+    });
+    assert.equal(r.statusCode,308);assert.equal(r.headers.location,'https://spacecycle.space/visit?space=indoor-01');
+});
+
 test('personal count route is present and rejects anonymous requests',async()=>{
     const response=await fetch(`${base}/api/me/spaces`);
     assert.equal(response.status,401);
@@ -78,9 +98,9 @@ test('spaces keeps five slots per category with only the supplied indoor test si
     assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, /<html lang="ko">/);
-    assert.match(html, /href="\/css\/style\.css"/);
-    assert.match(html, /href="\/css\/spaces\.css"/);
-    assert.match(html, /src="\/js\/spaces\.js"/);
+    assert.match(html, /data-source="\/css\/style\.css"/);
+    assert.match(html, /data-source="\/css\/spaces\.css"/);
+    assert.match(html, /src="\/js\/spaces\.js\?v=[a-f0-9]{16}"/);
     assert.match(html, /id="spaces-tabs"[^>]*hidden/);
     for (const category of ['indoor', 'outdoor']) {
         assert.equal((html.match(new RegExp(`data-category="${category}"`, 'g')) || []).length, 5);
@@ -119,7 +139,7 @@ test('QR page exposes opt-in camera controls, local decoder and honest privacy/s
     for (const src of ['/vendor/jsqr/jsQR.js', '/js/qr-policy.js', '/js/qr-camera.js', '/js/qr-scanner.js']) {
         const response = await fetch(`${base}${src}`);
         assert.equal(response.status, 200, src);
-        assert.ok(html.includes(`src="${src}"`));
+        assert.ok(html.includes(`src="${src}?v=`));
     }
     assert.match(html, /서버에 업로드하지/);
     assert.match(html, /방문 인증이나 보상/);

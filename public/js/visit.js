@@ -16,9 +16,10 @@
     const data = window.SpaceCycleSpaces;
     const policy = window.SpaceCycleQrPolicy;
     const engine = window.SpaceCycleVisit;
+    const transport = window.SpaceCycleVisitRequest;
     const selection = policy?.readSelection(location.search);
     const place = selection?.valid && data?.getSpace(selection.spaceId);
-    if (!place?.enabled || !engine) {
+    if (!place?.enabled || !engine || !transport) {
         document.getElementById('visit-name').textContent = place?.name || '공간을 확인할 수 없어요';
         status.textContent = '이 공간은 아직 체류 테스트를 제공하지 않아요. 공간 목록에서 다시 선택해주세요.';
         return;
@@ -47,25 +48,21 @@
         else if (latest.phase === 'complete') freshness.textContent = '서버에서 마지막 위치와 1분 체류를 확인했어요.';
         else freshness.textContent = `마지막 확인 ${Math.floor(Math.max(0, performance.now() - latest.confirmedAt) / 1000)}초 전 · 약 3초마다 갱신`;
     }
-    async function request(route, body, options = {}) {
-        const owner = runOwner;
-        if (!owner || user()?.uid !== owner) throw new Error('login_required');
-        const token = await auth().getToken();
-        if (user()?.uid !== owner || options.signal?.aborted) throw new Error('identity_changed');
-        const response = await fetch(route, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify(body), credentials: 'omit', cache: 'no-store',
-            signal: options.signal, keepalive: options.keepalive === true,
-        });
-        if (!response.ok) throw new Error(`stay_http_${response.status}`);
-        return response.status === 204 ? null : response.json();
-    }
+    const request = transport.createVisitRequest({ getAuth: auth, getOwner: () => runOwner });
+    const reload = document.getElementById('visit-reload');
+    const build = document.getElementById('visit-build');
+    const release = document.querySelector('meta[name="spacecycle-release"]')?.content || 'unknown';
+    build.textContent = `화면 버전 ${release}`;
+    reload.addEventListener('click', () => location.reload());
     const session = engine.createVisitSession({
         spaceId: place.id, geolocation: navigator.geolocation, request,
         onState: state => {
             latest = state;
             status.dataset.phase = state.phase;
+            status.dataset.errorCode = state.errorCode || '';
             status.textContent = state.message;
+            reload.hidden = state.phase !== 'error';
+            build.textContent = `화면 버전 ${release}${state.errorCode ? ` · ${state.errorCode}` : ''}`;
             start.disabled = state.active || !auth()?.isReady || !user();
             stop.hidden = !state.active;
             start.textContent = state.active ? '체류 확인 중' : state.phase === 'complete' ? '다시 테스트하기' : '위치 확인하고 시작';

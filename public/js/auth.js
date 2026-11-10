@@ -1,7 +1,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut }
     from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
-import './auth-policy.js';
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyAPTYO5sUQqT2DFxbcdDcILDYfTK8mExmg",
@@ -26,11 +26,11 @@ let countRevision = 0;
 const authApi = window.SpaceCycleAuth = {
     isReady: false,
     getUser: () => auth?.currentUser || null,
-    async getToken() {
+    async getToken(forceRefresh = false) {
         const user = auth?.currentUser;
         const revision = authRevision;
         if (!user) throw new Error('로그인한 뒤 다시 시도해 주세요.');
-        const token = await user.getIdToken();
+        const token = await user.getIdToken(forceRefresh === true);
         if (auth.currentUser !== user || authRevision !== revision) throw new Error('로그인 상태가 변경되었습니다. 다시 시도해 주세요.');
         return token;
     },
