@@ -1,160 +1,147 @@
 (() => {
     const status = document.getElementById('visit-status');
     if (!status) return;
-    const start = document.getElementById('visit-start');
-    const stop = document.getElementById('visit-stop');
-    const timer = document.getElementById('visit-timer');
-    const progress = document.getElementById('visit-progress');
-    const distance = document.getElementById('visit-distance');
-    const accuracy = document.getElementById('visit-accuracy');
-    const freshness = document.getElementById('visit-freshness');
-    const diagnostics = document.getElementById('visit-diagnostics');
-    const login = document.getElementById('visit-login');
+    const element = id => document.getElementById(id);
+    const start = element('visit-start'), finish = element('visit-finish'), stop = element('visit-stop');
+    const timer = element('visit-timer'), progress = element('visit-progress');
+    const freshness = element('visit-freshness'), diagnostics = element('visit-diagnostics');
+    const login = element('visit-login'), reload = element('visit-reload'), build = element('visit-build');
     const auth = () => window.SpaceCycleAuth;
     const user = () => auth()?.getUser();
-    let runOwner = null;
-    let observedUser = null;
-    const data = window.SpaceCycleSpaces;
-    const policy = window.SpaceCycleQrPolicy;
-    const engine = window.SpaceCycleVisit;
-    const transport = window.SpaceCycleVisitRequest;
-    const clock = window.SpaceCycleVisitClock;
+    const data = window.SpaceCycleSpaces, policy = window.SpaceCycleQrPolicy;
+    const engine = window.SpaceCycleVisit, transport = window.SpaceCycleVisitRequest, clock = window.SpaceCycleVisitClock;
     const selection = policy?.readSelection(location.search);
     const place = selection?.valid && data?.getSpace(selection.spaceId);
-    if (!place?.enabled || !engine || !transport || !clock) {
-        document.getElementById('visit-name').textContent = place?.name || '공간을 확인할 수 없어요';
-        status.textContent = '이 공간은 아직 체류 테스트를 제공하지 않아요. 공간 목록에서 다시 선택해주세요.';
+    if (!place?.enabled || !engine || !transport || !clock || !finish) {
+        element('visit-name').textContent = place?.name || '공간을 확인할 수 없어요';
+        status.textContent = '이 공간은 아직 체류 확인을 제공하지 않아요. 공간 목록에서 다시 선택해주세요.';
         return;
     }
-    document.getElementById('visit-name').textContent = place.name;
-    document.getElementById('visit-condition').textContent = `내부 공간 01 · 테스트 장소\n반경 ${place.radiusM}m 안에서 연속 ${place.requiredMs / 1000}초 동안 머물러주세요.`;
-    document.getElementById('visit-back').href = `/spaces?space=${place.id}`;
+    element('visit-name').textContent = place.name;
+    element('visit-back').href = `/spaces?space=${place.id}`;
     login.href = `/login?next=${encodeURIComponent(`/visit?space=${place.id}`)}`;
-    if (!window.isSecureContext || !navigator.geolocation) {
-        status.textContent = '위치는 HTTPS 연결에서 확인할 수 있어요. Safari 또는 Chrome에서 HTTPS 주소를 열어주세요.';
-        return;
-    }
-    let latest = null;
-    let paintTimer = null;
+    const canLocate = () => window.isSecureContext && Boolean(navigator.geolocation);
+    const online = () => navigator.onLine !== false;
+    const visible = () => !document.hidden;
+    const release = document.querySelector('meta[name="spacecycle-release"]')?.content || 'unknown';
+    const locationCodes = new Set(['gps_stale', 'gps_duplicate', 'gps_clock', 'gps_invalid_timestamp',
+        'gps_timeout', 'gps_denied', 'gps_unavailable']);
+    const refreshed = new Set();
+    let session = null, runOwner = null, observedUser = null, uiGeneration = 0;
+    let latest = null, paintTimer = null;
+    const request = transport.createVisitRequest({ getAuth: auth, getOwner: () => runOwner });
     const formatTime = milliseconds => {
         const seconds = Math.ceil(Math.max(0, milliseconds) / 1000);
         return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
     };
-    function paint() {
-        if (!latest) return;
-        // Interpolate the display only. The session/API still exclusively decide completion.
-        const display = clock.getDisplayTime(latest, performance.now());
-        timer.textContent = formatTime(display.remainingMs);
-        progress.max = latest.requiredMs;
-        progress.value = display.elapsedMs;
-        const message = display.stale ? '위치 확인이 지연되어 예상 시간 표시를 멈췄어요.'
-            : latest.locationPending ? `${latest.message}${latest.confirmedAt === null ? '' : ' 남은 시간은 마지막 서버 확인값이에요.'}`
-            : display.awaitingFinal ? '마지막 위치 확인 중… 서버 승인 후 완료돼요.' : latest.message;
-        if (status.textContent !== message) status.textContent = message;
-        status.dataset.displayPhase = display.stale ? 'stale' : display.awaitingFinal ? 'confirming' : latest.phase;
-        if (latest.confirmedAt === null) freshness.textContent = latest.confirmedSampleCount > 0
-            ? `이번 시도에서 서버 확인 ${latest.confirmedSampleCount}회 후 중단했어요. 진행 시간과 거리 표시는 초기화됐어요.`
-            : '아직 위치를 확인하지 않았어요.';
-        else if (latest.phase === 'complete') freshness.textContent = '서버에서 마지막 위치와 1분 체류를 확인했어요.';
-        else freshness.textContent = `마지막 서버 확인 ${Math.floor(Math.max(0, performance.now() - latest.confirmedAt) / 1000)}초 전 · ${latest.locationPending ? '위치 재확인 중 · 마지막 서버 확인값 표시' : '남은 시간은 예상 표시'}`;
+    function stopPainting() {
+        if (paintTimer !== null) clearInterval(paintTimer);
+        paintTimer = null;
     }
-    const request = transport.createVisitRequest({ getAuth: auth, getOwner: () => runOwner });
-    const reload = document.getElementById('visit-reload');
-    const build = document.getElementById('visit-build');
-    const release = document.querySelector('meta[name="spacecycle-release"]')?.content || 'unknown';
-    const locationCodes = new Set(['gps_stale', 'gps_duplicate', 'gps_clock', 'gps_invalid_timestamp', 'gps_timeout']);
     function paintDiagnostics(state) {
         const issue = locationCodes.has(state.locationIssue?.code) ? state.locationIssue : null;
         const sample = issue || state.locationSample;
         const parts = [];
         if (Number.isFinite(sample?.requestMs)) parts.push(`위치 응답 대기 ${(Math.max(0, sample.requestMs) / 1000).toFixed(1)}초`);
         if (Number.isFinite(sample?.fixAgeMs)) parts.push(`측정값 나이 ${(sample.fixAgeMs / 1000).toFixed(1)}초`);
-        if (Number.isSafeInteger(state.confirmedSampleCount) && state.confirmedSampleCount >= 0) parts.push(`서버 확인 ${state.confirmedSampleCount}회`);
-        if (Number.isSafeInteger(state.locationTimeoutMs) && Number.isSafeInteger(state.maxGapMs)) {
-            parts.push(`위치 획득 최대 ${state.locationTimeoutMs / 1000}초 · 확인 기한 ${state.maxGapMs / 1000}초`);
-        }
+        parts.push('위치 획득 시도 최대 15초 · 전체 최대 30초');
         if (issue) parts.push(issue.code);
-        if (diagnostics) {
-            diagnostics.textContent = parts.join(' · ');
-            diagnostics.hidden = parts.length === 0;
-        }
+        if (diagnostics) { diagnostics.textContent = parts.join(' · '); diagnostics.hidden = false; }
         status.dataset.locationCode = issue?.code || '';
         build.textContent = [`화면 버전 ${release}`, state.errorCode, issue?.code].filter(Boolean).join(' · ');
     }
-    build.textContent = `화면 버전 ${release}`;
-    reload.addEventListener('click', () => location.reload());
-    const session = engine.createVisitSession({
-        spaceId: place.id, geolocation: navigator.geolocation, request,
-        onState: state => {
-            latest = state;
-            status.dataset.phase = state.phase;
-            status.dataset.errorCode = state.errorCode || '';
-            status.textContent = state.message;
-            reload.hidden = state.phase !== 'error';
-            paintDiagnostics(state);
-            start.disabled = state.active || !auth()?.isReady || !user();
-            stop.hidden = !state.active;
-            start.textContent = state.active ? '체류 확인 중' : state.phase === 'complete' ? '다시 테스트하기' : '위치 확인하고 시작';
-            distance.textContent = state.distanceM === null ? '—' : `${Math.round(state.distanceM)}m`;
-            accuracy.textContent = state.accuracyM === null ? '—' : `±${Math.round(state.accuracyM)}m`;
-            // A single display ticker avoids pushing the next tick back on every API reply.
-            if (state.active && paintTimer === null) paintTimer = setInterval(paint, 250);
-            else if (!state.active && paintTimer !== null) {
-                clearInterval(paintTimer);
-                paintTimer = null;
-            }
-            paint();
-            if (state.phase === 'complete' && state.persisted && user()?.uid === runOwner) {
-                void auth().refreshFoundSpaces().catch(() => {});
-            }
-        },
-    });
-    function syncAuth() {
-        const currentUser = user()?.uid || null;
-        if (observedUser !== currentUser) {
-            session.stop('계정 상태가 바뀌어 체류 시간을 초기화했어요.');
-            observedUser = currentUser;
-            runOwner = null;
+    function paint() {
+        if (!latest) return;
+        const display = clock.getDisplayTime(latest, performance.now());
+        timer.textContent = formatTime(display.remainingMs);
+        progress.max = latest.requiredMs; progress.value = display.elapsedMs;
+        const hasWait = ['waiting', 'ready'].includes(latest.phase);
+        const ready = auth()?.isReady && Boolean(user()) && user()?.uid === runOwner;
+        const enabled = ready && visible() && online() && !latest.busy && !latest.suspended;
+        start.disabled = !enabled || latest.active || !canLocate();
+        start.hidden = hasWait || latest.phase === 'complete';
+        start.textContent = latest.busy ? '위치 확인 중' : '위치 확인하고 시작';
+        finish.hidden = !hasWait;
+        finish.disabled = !enabled || !display.awaitingFinal || !canLocate();
+        finish.textContent = latest.busy ? '마지막 위치 확인 중…' : latest.errorCode ? '마지막 위치 다시 확인' : '마지막 위치 확인';
+        stop.hidden = !latest.active && latest.phase !== 'complete';
+        stop.disabled = !ready || !online() || latest.cancelling || latest.suspended;
+        stop.textContent = latest.phase === 'complete' ? '진행 닫기 (저장 기록 유지)' : '진행 취소';
+        let message = latest.message;
+        if (display.stale) message = '진행 유효기간이 끝났어요. 최신 화면에서 계정의 진행을 다시 확인해주세요.';
+        else if (hasWait && display.awaitingFinal && !latest.busy && !latest.errorCode && !latest.suspended) {
+            message = '대기 시간이 지났어요. 마지막 위치 확인 버튼을 눌러주세요. 아직 완료·저장 전이에요.';
         }
-        const ready = auth()?.isReady === true;
-        login.hidden = !ready || Boolean(currentUser);
-        start.disabled = !ready || !currentUser || session.isActive();
-        if (!ready) {
-            status.dataset.phase = 'auth-loading';
-            status.textContent = '로그인 상태를 확인하는 중이에요.';
-        } else if (!currentUser) {
-            status.dataset.phase = 'login-required';
-            status.textContent = '공간을 계정에 저장하려면 먼저 Google로 로그인해주세요.';
-        } else if (!session.isActive()) {
-            status.dataset.phase = 'idle';
-            status.textContent = '버튼을 누르면 위치 권한을 요청해요. 반경과 정확도가 확인되면 시간이 시작돼요.';
+        if (!canLocate() && latest.phase !== 'complete') message = '진행 상황은 불러왔어요. 시작·종료 위치는 Safari 또는 Chrome에서 HTTPS 주소를 열어 확인해주세요.';
+        status.textContent = message;
+        status.dataset.displayPhase = display.stale ? 'expired' : display.awaitingFinal ? 'ready' : latest.phase;
+        reload.hidden = !latest.errorCode && !display.stale;
+        if (latest.phase === 'complete' && latest.persisted) freshness.textContent = '서버에서 시작·종료 위치와 대기 시간을 확인하고 기록을 저장했어요.';
+        else if (hasWait) freshness.textContent = `${latest.suspended ? '화면 확인은 잠시 멈췄어요. ' : ''}남은 시간은 서버 응답 기준 예상 표시예요. 진행은 시작 후 최대 2시간 유지돼요.`;
+        else freshness.textContent = '시작·종료 버튼을 누를 때만 위치를 확인해요. 중간에는 GPS를 요청하지 않아요.';
+    }
+    function receive(state, owner, run) {
+        if (uiGeneration !== run || runOwner !== owner || user()?.uid !== owner) return;
+        latest = state;
+        status.dataset.phase = state.phase; status.dataset.errorCode = state.errorCode || '';
+        element('visit-condition').textContent = `내부 공간 01 · 테스트 장소\n반경 ${place.radiusM}m 안에서 시작 위치와 종료 위치, 서버 기준 ${state.requiredMs / 1000}초 대기 시간을 확인해요.`;
+        element('visit-distance').textContent = state.distanceM === null ? '—' : `${Math.round(state.distanceM)}m`;
+        element('visit-accuracy').textContent = state.accuracyM === null ? '—' : `±${Math.round(state.accuracyM)}m`;
+        paintDiagnostics(state);
+        if (state.active && !state.suspended && visible() && paintTimer === null) paintTimer = setInterval(paint, 250);
+        else if (!state.active || state.suspended || !visible()) stopPainting();
+        paint();
+        const key = `${owner}:${state.id}`;
+        if (state.phase === 'complete' && state.persisted === true && Number.isSafeInteger(state.foundSpaceCount) &&
+            !refreshed.has(key) && user()?.uid === owner) {
+            refreshed.add(key);
+            void auth().refreshFoundSpaces().catch(() => {});
         }
     }
+    function syncAuth() {
+        const currentUser = user()?.uid || null;
+        const ready = auth()?.isReady === true;
+        if (currentUser !== observedUser || (!ready && runOwner)) {
+            uiGeneration++; runOwner = null; session?.suspend(); session = null; latest = null; stopPainting();
+            observedUser = currentUser;
+            timer.textContent = formatTime(place.requiredMs); progress.value = 0;
+            element('visit-distance').textContent = element('visit-accuracy').textContent = '—';
+        }
+        login.hidden = !ready || Boolean(currentUser);
+        if (!ready || !currentUser) {
+            start.disabled = true; start.hidden = false; finish.hidden = stop.hidden = true;
+            status.dataset.phase = ready ? 'login-required' : 'auth-loading'; status.dataset.errorCode = '';
+            status.textContent = ready ? '공간을 계정에 저장하려면 먼저 Google로 로그인해주세요.' : '로그인 상태를 확인하는 중이에요.';
+            return;
+        }
+        if (!session) {
+            const run = ++uiGeneration; runOwner = currentUser;
+            session = engine.createVisitSession({ spaceId: place.id, geolocation: navigator.geolocation, request,
+                onState: state => receive(state, currentUser, run) });
+            if (visible() && online()) void session.restore();
+        } else paint();
+    }
+    build.textContent = `화면 버전 ${release}`;
+    reload.addEventListener('click', () => location.reload());
     window.addEventListener('spacecycle:authchange', syncAuth);
     syncAuth();
     const authDeadline = setTimeout(() => {
         if (!auth()?.isReady) {
-            status.textContent = '로그인 기능을 불러오지 못했어요. 인터넷을 확인하고 새로고침해주세요.';
+            status.textContent = '로그인 기능을 불러오지 못했어요. 연결 상태를 확인하고 새로고침해주세요.';
             status.dataset.phase = 'auth-error';
         }
     }, 12000);
-    window.addEventListener('pagehide', () => clearTimeout(authDeadline));
-    start.addEventListener('click', () => {
-        if (!document.hidden && auth()?.isReady && user()) {
-            runOwner = user().uid;
-            void session.start();
-        }
-    });
-    stop.addEventListener('click', () => session.stop());
-    const interrupt = message => {
-        if (session.isActive()) session.stop(message);
+    const explicit = action => {
+        if (visible() && online() && auth()?.isReady && user()?.uid === runOwner && session) void session[action]();
     };
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) interrupt('다른 화면으로 이동해 시간을 초기화했어요. 돌아오면 버튼을 눌러 다시 시작해주세요.');
-    });
-    window.addEventListener('pagehide', () => interrupt('페이지를 벗어나 시간을 초기화했어요.'));
-    window.addEventListener('offline', () => interrupt('인터넷 연결이 끊겨 시간을 초기화했어요.'));
-    document.addEventListener('click', event => {
-        if (event.target.closest?.('a[href]')) interrupt('페이지를 벗어나 시간을 초기화했어요.');
-    });
+    start.addEventListener('click', () => explicit('start'));
+    finish.addEventListener('click', () => explicit('finish'));
+    stop.addEventListener('click', () => explicit('stop'));
+    const suspend = () => { session?.suspend(); stopPainting(); };
+    const restore = () => { if (visible() && online() && user()?.uid === runOwner) void session?.restore(); };
+    document.addEventListener('visibilitychange', () => { if (document.hidden) suspend(); else restore(); });
+    window.addEventListener('pagehide', () => { clearTimeout(authDeadline); suspend(); });
+    window.addEventListener('pageshow', event => { if (event.persisted) restore(); });
+    window.addEventListener('offline', suspend);
+    window.addEventListener('online', restore);
 })();

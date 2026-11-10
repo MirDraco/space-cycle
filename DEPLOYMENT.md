@@ -1,19 +1,16 @@
 # Docker 배포 · Space Cycle
 
-## 배포 구성
+## 운영 구성
 
-- 서버: `nori-dev`, 배포 디렉터리: `/home/nori/services/space-cycle`
-- Compose 프로젝트/서비스: `space-cycle`
-- 앱 내부 포트: `4500`
-- 서버 게시 주소: **`http://127.0.0.1:4500`** (서버 내부에서만 접근)
-- 외부 접속 계획: **`https://spacecycle.space` → Cloudflare Tunnel → 서버 127.0.0.1:4500**
-- Google 로그인은 기존 Firebase Authentication 사용. 고유 완료 기록은 **SQLite named volume `space-cycle_visits-data`**에 보존하며 `/app/data/visits.sqlite`를 사용.
+- 저장소: `MirDraco/space-cycle`, 브랜치 `main`.
+- 서버: `nori@nori-dev`, `/home/nori/services/space-cycle`. SSH 접속 때 호스트·사용자를 확인합니다.
+- Compose 프로젝트/서비스 `space-cycle`, 앱4500 → **`127.0.0.1:4500`만 게시**.
+- 공개 HTTPS: `https://spacecycle.space` → 호스트 Cloudflare Tunnel → loopback4500.
+- Node 24, non-root `node`, read-only root filesystem, CPU1개·메모리256MiB·PID100 제한.
+- 진행·완료 DB: named volume `space-cycle_visits-data`, `/app/data/visits.sqlite`, 파일 권한600.
+- **`docker compose down -v`, volume prune/삭제 금지.** 관련 없는 컨테이너나 Tunnel/DNS를 바꾸지 않습니다.
 
-`127.0.0.1` 바인딩은 의도적인 설정이다. 서버의 LAN/Tailscale IP에 `:4500`을 붙여도 직접 접속되지 않는다. 공유기 포트포워딩이나 방화벽의 공개 4500 허용은 필요하지 않다. Tunnel 설정 전에는 외부 HTTPS 사이트가 동작한다고 간주하지 않는다.
-
-## 로컬 개발과 테스트
-
-Node.js 24.19 이상과 npm이 필요하다. 서버 이미지에는 Node 24의 `node:sqlite`가 포함된다.
+## 로컬 실행
 
 ```bash
 npm ci
@@ -21,127 +18,88 @@ npm test
 npm start
 ```
 
-`npm test`는 프로세스/페이지 HTTP, QR 정책/카메라 수명, GPS 반경·연속 체류, 서명 토큰 검증, 계정 분리·중복 방지·SQLite 재시작 보존 및 배포 구성 검사를 수행한다. 테스트용 서명키/가상 계정을 사용하며 실제 Google 계정 로그인·물리 카메라·현장 GPS를 대신하지 않는다. 개발용 기록은 Git에서 제외한 `data/`에 저장하고 테스트는 별도 임시 DB를 사용한다.
+자동 검사는 격리 DB/합성 계정·센서를 사용합니다. 실제 Google 개인 로그인·물리 GPS·카메라를 대신하지 않습니다. 개발용 `data/`는 Git/이미지/정적 파일 경로에서 제외합니다.
 
-## 최초 서버 배포
+## 시작·종료 모델 운영
 
-아래 경로가 이미 존재하면 먼저 저장소 remote와 작업 상태를 확인한다. 다른 파일을 덮어쓰지 않는다.
+1. 시작 위치·정확도를 서버에서 확인하고 계정·공간별 진행을 SQLite에 저장합니다.
+2. 서버 공간 설정의 필요 시간이 경과할 때까지 대기합니다. **대기 중 주기적 GPS·HTTP polling·사용자별 서버 타이머가 없습니다.**
+3. 사용자가 마지막 확인 버튼을 누르면 새 위치와 서버 시간을 확인합니다.
+4. 고유 완료 기록과 진행 완료 상태를 하나의 트랜잭션으로 저장합니다.
+
+- **중간에 계속 현장에 있었음을 검증하지 않습니다.** QR/GPS 조작을 완전히 막는 출석·보상 인증이 아닙니다.
+- 마지막 위치·통신·저장 실패는 기다린 시간을 지우지 않습니다. 최종 확인 재시도 가능, 완료/카운트는 서버 저장 성공 후만 표시합니다.
+- 새로고침·잠금·백그라운드·오프라인 후 같은 계정으로 복구합니다. 복구는 위치 권한을 요청하지 않습니다. 명시적 취소·시작 후2시간 만료만 진행을 종료합니다.
+- 위치는 1회 최대15초, 작업 전체30초 예산이며 timestamp·정확도 조건은 유지합니다. `watchPosition`으로 바꾼 것이 아닙니다.
+- **이전25초 위치 연속성 기한은 없습니다.** Compose의 `SPACE_CYCLE_LOCATION_TIMEOUT_MS`, `SPACE_CYCLE_MAX_GAP_MS`, `SPACE_CYCLE_NETWORK_RESERVE_MS` 설정은 제거했습니다. 연속성 store/policy 유틸리티가 남더라도 공개 API에서는 연결하지 않습니다.
+- 시작 시각·필요 시간·준비 시각·만료 시각은 서버에서만 결정합니다. 재시작 복구를 위해 영구 서버 시각을 사용하므로 호스트 NTP/시각 변경을 관리합니다.
+- 미완료(active) 진행은 계정·공간별 하나·최대10,000개이며 완료 상태 진행은 한도에서 제외하고 유효기간 만료 시 정리합니다. 계정별 stays API분당60회 제한. 제한기는 프로세스 내 상태이므로 재시작 시 초기화되며 복수 replica의 전역 제한은 아닙니다. 단일 프로세스/SQLite 구성을 유지합니다. 수용 인원은 부하 시험 범위 밖으로 보장하지 않습니다.
+- 원본 GPS·토큰·이메일은 DB/앱 로그에 저장하지 않습니다. API 요청 본문·Authorization을 프록시 디버그 로그로 추가 기록하지 않습니다. 백업에는 계정 식별자가 포함되므로 개인정보로 보호합니다.
+- 시작마다 브라우저가 보안 난수48자리 `attemptId`를 생성합니다. 미확인 시작의 취소는 `/api/stays/abandon`에서 취소 의도를 먼저 영구 저장한 뒤204로 승인합니다. 지연된 원래 시작은409 `start_cancelled`이며, idle 복구가 시작을 추월했다고 취소 성공으로 표시하지 않습니다. 이 표는 UID·시도ID·장소·진행ID매핑·취소여부·만료시각만 저장하고 최대10,000행·2시간 유효기간으로 제한합니다. 기존 취소 의도는 capacity 때문에 조기 축출하지 않습니다. `attemptId` 없는4필드 시작은 호환용이며 현재 브라우저는 사용하지 않습니다.
+
+## 배포 전
+
+1. 로컬/원격 main SHA·작업 트리·remote 확인. 대상 외 변경이 있으면 덮어쓰지 않습니다.
+2. 전체 테스트·프로덕션 의존성 audit·정적 보안 검사·독립 리뷰 통과.
+3. 서버 디스크·현재 컨테이너·이웃 서비스 상태·named volume 확인.
+4. **SQLite backup API로 일관된 배포 전 백업**을 만듭니다. 실행 중 `.sqlite` 파일 하나만 복사하면 WAL을 놓칠 수 있습니다.
+5. 기존 완료 행을 보존하는 추가 테이블 마이그레이션인지, 격리 DB로 구버전→신버전·재시작·중복 방지를 검증합니다.
+6. 운영 DB에 합성 완료 기록을 삽입하지 않습니다. 컨테이너/볼륨 검증은 별도 probe DB 파일만 사용합니다.
+
+## 업데이트
 
 ```bash
-mkdir -p ~/services
-git clone https://github.com/MirDraco/space-cycle.git ~/services/space-cycle
 cd ~/services/space-cycle
+hostname
+id -un
+git status --short
+# 예상 호스트·사용자이고 작업 트리가 깨끗할 때만 진행
 git pull --ff-only origin main
 export IMAGE_TAG=$(git rev-parse --short=12 HEAD)
 docker compose config --quiet
 docker compose build --pull
-docker compose up -d --wait --wait-timeout 120
-```
-
-## 정상 동작 확인
-
-```bash
-cd ~/services/space-cycle
-export IMAGE_TAG=$(git rev-parse --short=12 HEAD)
-docker compose ps
-curl --fail http://127.0.0.1:4500/healthz
-curl --fail -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4500/
-curl --fail -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4500/spaces
-docker compose logs --tail=50
-```
-
-`/healthz`는 `{ "status": "ok" }`를 반환하는 프로세스 건강 확인이다. Firebase·외부 서비스까지 정상이라는 뜻은 아니다.
-
-## 이후 업데이트
-
-로컬에서 변경 검증 후 commit/push하고 서버에서 아래를 실행한다.
-
-```bash
-cd ~/services/space-cycle
-git status --short
-# 위 결과가 비어 있을 때만 이어서 진행한다.
-git pull --ff-only origin main
-export IMAGE_TAG=$(git rev-parse --short=12 HEAD)
-docker compose build --pull
-docker compose up -d --wait --wait-timeout 120
+docker compose up -d --no-build --wait --wait-timeout 120 space-cycle
 curl --fail http://127.0.0.1:4500/healthz
 docker compose ps
 ```
 
-소스 파일이 이미지에 포함되므로 `git pull`만으로 실행 중인 앱은 바뀌지 않는다. 이미지 재빌드와 서비스 교체가 필요하다. 빌드 실패 시 기존 컨테이너는 계속 실행되므로 `down`부터 실행하지 않는다. 다른 Compose 프로젝트의 컨테이너·네트워크는 변경하지 않는다.
+이미지 태그는 정확한 커밋의12자리입니다. pull만으로 실행 앱은 바뀌지 않습니다. **빌드 전에 기존 앱을 down하지 않습니다.** 빌드·검증 실패 시 기존 컨테이너를 유지합니다. Docker context는 allowlist, 기본 이미지는 digest고정, npm production clean install, 새로운 server파일도 패키징해야 합니다.
 
-## 되돌리기
+## 배포 후 검증
 
-각 이미지는 Git 커밋의 12자리 값으로 태그된다. 기존 이미지가 남아 있으면 알려진 정상 태그를 지정해서 서비스만 교체할 수 있다.
+- 로컬·GitHub·서버 HEAD/추적 파일, 실행 이미지 runtime 파일, 공개 응답을 각각 비교합니다.
+- 컨테이너 healthy·non-root·read-only·loopback4500·동일 named volume·DB권한600을 확인합니다. 다른 서비스의 ID/시작 시각/상태가 바뀌면 조사합니다.
+- 기존 `visits` 행과 최초 완료 시각이 모두 보존됐는지 확인합니다. 새 진행 표와 인덱스만 추가합니다. DB quick_check 확인.
+- `/`, `/spaces`, `/qr`, `/visit?space=indoor-01`, `/badges`, `/login`, `/healthz`와 자산이 정상이어야 합니다.
+- `/.env`, `/.git/config`, `/server/*`, `/data/visits.sqlite`, WAL/SHM, `/compose.yaml`은 공개되지 않아야 합니다.
+- `/api/me/spaces`와 stays 시작/복구/완료는 인증 없이401. 본문·Origin·계정 소유권 검사 유지. 구 `/sample`은 방문을 승인할 수 없어야 합니다.
+- 인쇄 QR `/s/in01`은 같은 위치 화면으로302. 다른9곳은 준비 중 정보 화면입니다. 인쇄물을 다시 만들 필요는 없습니다.
+- 공개 하단 버전과 `X-SpaceCycle-Release`·`?v=` 해시를 확인합니다. 구버전 페이지를 열어둔 사용자는 새로고침해야 합니다.
+- `/healthz`는 프로세스 확인일 뿐, Firebase·휴대폰GPS·최종 완료까지 보장하지 않습니다.
+
+## 롤백
 
 ```bash
 cd ~/services/space-cycle
-# <정상 커밋 태그>를 실제 남아 있는 이미지 태그로 바꾼다.
-IMAGE_TAG=<정상 커밋 태그> docker compose up -d --no-build --wait --wait-timeout 120
+# docker image ls space-cycle로 남아 있는 정상 태그를 먼저 확인
+IMAGE_TAG=<알려진-정상-태그> docker compose up -d --no-build --wait --wait-timeout 120 space-cycle
 ```
 
-이미지가 존재하는지 먼저 `docker image ls space-cycle`로 확인한다. `docker system prune` 등 다른 프로젝트에 영향을 주는 정리는 하지 않는다.
+이번 스키마는 기존 `visits`를 지우지 않고 진행 표를 추가합니다. 구버전은 추가 표를 사용하지 않으므로 완료 기록은 보존되지만 **구버전 연속 GPS 흐름은 새 진행을 복구하지 않습니다.** 롤백 후 미완료 진행 처리 정책은 별도 안내해야 합니다. 운영 중 생성된 기록을 잃을 수 있으므로 오래된 DB 백업을 무조건 덮어쓰지 않습니다. 필요한 복구는 앱 정지·현재 DB보존·차이 검토 후 별도로 수행합니다. `docker system prune`은 사용하지 않습니다.
 
-## Cloudflare Tunnel 연결 — 사용자가 진행할 부분
+## 인증·캐시·통신
 
-이 배포에는 `cloudflared` 설치나 Tunnel/DNS 변경을 포함하지 않는다.
+- Firebase Authentication Authorized domains에 `spacecycle.space`, Google 제공자 활성화. 기존 `space-cycle-1b705.firebaseapp.com` authDomain을 유지합니다.
+- Firebase 공개 웹 설정은 관리자 비밀키가 아닙니다. 서비스계정/비밀키·Tunnel토큰은 Git/이미지/채팅에 넣지 않습니다.
+- Google securetoken 공개 JWKS 접근이 필요합니다. 토큰 서명·만료는 매 요청 검증하지만 계정 강제 철회 조회는 별도입니다.
+- 같은 사이트 보안 쿠키는 `credentials: same-origin`, 인증은 Bearer입니다. 명시적 JSON401만 토큰 갱신1회. 불명확한 네트워크 실패 때 임의 POST를 무조건 반복하지 말고 복구로 상태를 조회합니다.
+- CSS는 고정 allowlist 파일을 HTML에 포함하고 JS는 내용 해시 버전, HTML/JS/CSS는no-store. Cloudflare Analytics의 실제 관측된 삽입 스크립트만 검증 비교 시 정규화합니다.
+- 오류는 로그인·보안 HTML응답·GPS·통신·저장·요청제한으로 구분합니다. 사용자에게 토큰·정확한 위치 기록을 요구하지 않습니다.
 
-1. Cloudflare 대시보드의 **Networking → Tunnels**에서 Tunnel을 생성한다. 화면에 따라 Cloudflare One의 Networks/Connectors 메뉴에 있을 수 있다.
-2. 커넥터는 **같은 nori-dev 호스트에 실행하는 Linux 서비스 방식**을 선택한다. 대시보드가 표시하는 공식 설치·실행 명령을 서버에 입력한다. 자동 시작 서비스로 설치하고 Connected/Healthy 상태를 확인한다.
-3. Published application route / Public hostname을 아래와 같이 추가한다.
+## Cloudflare Tunnel 유지
 
-   | 항목 | 값 |
-   |---|---|
-   | Subdomain | 비워 둠 (루트 도메인) |
-   | Domain | `spacecycle.space` |
-   | Path | 비워 둠 |
-   | Type | `HTTP` |
-   | URL | `127.0.0.1:4500` |
+기존 호스트 cloudflared → `127.0.0.1:4500` 경로를 유지하며 공개4500이나 공유기 포트포워딩은 열지 않습니다. Docker bridge의 `127.0.0.1`은 컨테이너 자신이므로, 추후 컨테이너형 Tunnel로 바꾸려면 같은 네트워크의 `http://space-cycle:4500` 등 별도 설계가 필요합니다. 이번 릴리스에는 Tunnel/DNS/인증 도메인 변경이 없습니다.
 
-4. 같은 이름의 기존 DNS 레코드가 있다면 충돌을 먼저 확인한다. 관련 없는 DNS 레코드를 삭제하지 않는다. 앱 포트로 A 레코드/공유기 포트포워딩을 별도로 만들지 않는다.
-5. 브라우저의 `https://spacecycle.space`, `/spaces`, `/healthz`를 확인하고 휴대폰 LTE/5G로 재확인한다. 외부는 HTTPS, 같은 서버의 Tunnel→앱 구간은 HTTP다.
-6. Firebase Authentication 설정의 **Authorized domains**에 `spacecycle.space`를 추가한 뒤 실제 휴대폰 Google 로그인/로그아웃을 확인한다. 이 작업만으로 기존 `authDomain`을 새 도메인으로 바꾸지 않는다.
+## 현장 확인 범위
 
-### Tunnel 커넥터를 Docker로 만들고 싶다면
-
-기본 브리지 네트워크 컨테이너에서 `127.0.0.1`은 호스트가 아니라 **그 컨테이너 자신**이다. 따라서 위의 호스트 서비스용 주소를 그대로 쓰면 연결되지 않는다. 대신 Linux 호스트 네트워크 방식으로 커넥터를 실행하거나, 앱과 같은 Compose 네트워크에 붙여 **`http://space-cycle:4500`**으로 연결하는 별도 구성이 필요하다. 현재 안내는 혼동을 줄이기 위해 **호스트 서비스 방식**을 기준으로 한다.
-
-### 비밀정보와 운영 주의
-
-- Tunnel 토큰·비밀번호·Firebase 서비스 계정 JSON은 채팅/Git/이미지에 넣지 않는다. 필요하면 서버 전용 보호 파일로 관리한다.
-- 브라우저용 Firebase 설정은 이미 공개 클라이언트 코드이며 서버 관리자 자격증명과 다르다. 데이터 보호는 적절한 Firebase Security Rules로 검증해야 한다.
-- 앱은 non-root 사용자, 읽기 전용 root filesystem, 최소 권한으로 실행한다. 로그 용량과 메모리/CPU에 제한을 둔다.
-- Docker 기본 이미지는 digest로 고정했다. 보안 업데이트 때 확인한 새 digest로 갱신·테스트·재배포한다.
-- TLS 연결 성공과 Google 인증 성공, QR/GPS/체류/보상 기능 구현은 별개다. 내부 공간 01(향설생활관2)의 QR·300m·1분 체류 완료를 로그인 계정별 SQLite 기록으로 저장하며 같은 공간은 한 번만 센다. 뱃지/스티커 보상·Firestore 저장은 미구현이다. 모바일 카메라·위치 권한은 HTTPS에서 확인한다. 개발용 localhost는 예외다.
-- Docker 이미지에 `server/`, `public/js/space-data.js`, `views/visit.html` 및 위치 화면 스크립트가 모두 포함되어야 한다. 짧은 QR `/s/in01`은 `/visit?space=indoor-01`로 302 이동한다. `/s/in02`~`in05`, `/s/out01`~`out05`는 등록 예정 공간 정보로 이동한다. 새 소스가 자동으로 운영에 반영되는 것은 아니다.
-- 진행 중 체류 API는 **단일 Node 프로세스 메모리**를 사용한다. 세션 최대 500개, 생성 후 10분 만료, 진행 중 시간은 재시작 시 초기화된다. 완료 기록은 named volume으로 보존한다. 다중 replica/worker에는 공유 세션·저장 설계가 필요하다. 실제 보상/행사 운영 전 요청 제한·백업·계정 탈퇴·강제 철회 검증을 추가한다. 위치 요청 본문/Authorization 헤더를 프록시·디버그 로그에 저장하지 않는다.
-- 배포 후 `/s/in01` 연결과 iOS Safari/Android Chrome에서 위치 허용·거부, 반경 이탈, 정확도 부족, 화면 잠금·백그라운드, 오프라인, 새로고침, 1분 완료를 확인한다. 실내 위치 정확도 부족은 완료되지 않아야 하며 반경을 자동으로 넓히지 않는다.
-- 화면 숫자는 마지막 서버 확인값 이후 경과시간으로 매초 예상 표시한다. `visit-clock.js`는 표시 전용이고 완료/저장을 판정하지 않는다. 00:00에서는 ‘마지막 위치 확인 중’으로 대기하며 서버 응답 전에는 카운트 증가/완료 처리를 하지 않는다. 응답 후3초 대기를 유지하며 확인 기한은 서버가 세션마다 전달하는 정책을 따른다.
-
-## 로그인과 완료 기록 운영
-
-- Firebase Authentication → Settings → Authorized domains에서 `spacecycle.space`가 있는지 확인한다. Google 제공자도 활성화되어 있어야 한다. `auth/unauthorized-domain`은 누락된 도메인, `auth/popup-blocked`는 팝업 차단이다. `authDomain`을 임의로 운영 도메인으로 바꾸면 안 된다.
-- 서버는 Google securetoken 공개 JWKS에 HTTPS 접근해야 한다. 별도 서비스 계정·개인키·Firebase 관리자 토큰을 Git이나 이미지에 넣지 않는다. Google ID 토큰은 매 요청 검증하고 uid는 검증 결과만 사용한다.
-- Compose volume `visits-data:/app/data`, `SPACE_CYCLE_DB=/app/data/visits.sqlite`, container user `node`를 유지한다. 루트 파일시스템은 읽기 전용이고 DB 디렉터리만 쓰기 가능하다. 이미지가 만든 node 소유 디렉터리는 새 named volume에 복사된다. 기존 볼륨 권한 오류가 있으면 원인을 확인하고 DB를 삭제해 해결하지 않는다.
-- **`docker compose down -v`, 볼륨 prune/삭제 금지.** 재빌드/up/일반 restart는 기록을 유지한다. 백업은 SQLite backup API로 일관된 사본을 만든 뒤 별도 보관하며, 실행 중 DB 파일 하나만 복사하면 WAL 기록을 놓칠 수 있다. 백업·탈퇴 삭제 요청은 계정 ID가 포함된 개인정보로 취급한다.
-- 홈 숫자는 기존 Firestore `foundSpaceCount`가 아닌 서버의 검증된 고유 완료 행을 읽는다. 과거 테스트는 저장 기능이 없었으므로 소급 집계하지 않는다. Google 로그인 후 향설생활관2를 한 번 완료하면 1, 다시 완료해도 1이어야 한다.
-
-## 모바일 스타일·체류 오류 점검
-
-- 앱 CSS는 서버가 고정 allowlist의 로컬 파일을 HTML `<style>`로 포함한다. CSS 하위 요청이나 외부 글꼴이 실패해도 레이아웃·색상은 유지한다. 기존 `public/css/` 원본을 수정하는 방식은 그대로다.
-- 모든 로컬 스크립트는 공개 자산/템플릿 내용 해시 `?v=`를 공유한다. HTML과 JS/CSS는 `Cache-Control: no-store`; 화면 하단과 `X-SpaceCycle-Release` 헤더로 버전을 확인한다. 관리자 프록시 캐시 규칙은 이 헤더를 존중해야 한다.
-- `auth-policy.js`도 같은 버전으로 먼저 로드하며, 버전 없는 ESM 내부 import를 남기지 않는다. 외부 Firebase SDK는 고정 버전이다.
-- 체류 요청은 같은 사이트의 Cloudflare 보안 쿠키를 보존하는 `credentials: same-origin`을 사용하되 인증은 계속 검증된 Bearer 토큰만으로 처리한다. JSON 401에만 Firebase 토큰을 새로 받아 1회 재시도하고, 임의 POST/저장 실패를 자동 반복하지 않는다.
-- GPS `TIMEOUT`(code 3) 한 번으로 세션을 취소하지 않는다. `server/stay-policy.js`는 운영 환경변수를 검증하고 실제 서버 허용 간격과 브라우저 획득 예산을 동일 세션 응답에 넣는다. Compose는 `SPACE_CYCLE_LOCATION_TIMEOUT_MS: "15000"`, `SPACE_CYCLE_MAX_GAP_MS: "25000"`, `SPACE_CYCLE_NETWORK_RESERVE_MS: "5000"`을 명시한다. 첫 위치 전체30초/응답후대기3초는 고정이다. 위치 획득시간+대기+통신 여유가 확인 기한보다 작아야 하며 잘못된 설정이면 서버 시작이 실패한다. 새 세션 안에서 정책이 바뀌거나 누락돼도 클라이언트는 거절한다.
-- 위치 획득은 최대15초이되 이미 소비한 응답 지연과 통신 여유5초를 빼서 줄인다. 6초에서 일찍 잘라 재시작하던 제한은 제거한다. 재시도는250ms 뒤이며 watchdog/기존좌표를 재사용하지 않는다. 25초는 종전12초보다 미관측 이동 허용을 늘리는 절충이다. 300m/정확도50m/연속60초/서버승인·중복방지 조건은 그대로다. `location_timeout`은 첫 위치 확인 기한, `location_gap`은 진행 중 기한, `request_timeout`은 준비 요청 기한이다. 실패 뒤에도 서버 확인 횟수와 마지막 진단은 남으며 좌표·토큰은 남기지 않는다.
-- 실패 문구는 `invalid_token`, `origin_denied`, `edge_blocked`, `capacity`, `save_failed`, `network_error` 등으로 구분한다. 화면 버전과 오류 코드만 공유해 진단하며 토큰/비밀번호/정확한 사용자 위치를 요구하지 않는다. `edge_blocked`는 HTML 보안 응답이며 앱 인증 실패와 다르다.
-- 테스트 반경은 프로젝트 소유자의 요청으로100m에서 **300m**로 변경했다. 별도 정확도50m/연속60초 제한은 유지한다. 반경 변경은 GPS 획득 지연·timestamp 거절의 해결책이 아니며 시간 예산을 별도로 검증한다.
-- `gps_stale`(위치 나이4초 초과), `gps_duplicate`(이전과 같거나 이전인 측정 시각), `gps_clock`(기기 시각보다1초 넘게 미래), `gps_invalid_timestamp`(유효하지 않은 측정 시각)는 표본을 서버로 보내지 않고 기존 기한 안에서 재측정한다. 응답 대기 시간·측정값 나이·거절코드만 기기 내 표시하며, 만료 후에도 마지막 코드가 남아야 한다. 물리 기기에서 이유를 확인하지 않고 Android 캐시/GPS 불량으로 확정하지 않는다.
-- 휴대폰에서만 재현되면 주소·화면 버전·표시 오류와 스크린샷을 확인한다. 에뮬레이션에서 CSS가 정상이거나 모의 서명으로 통과했다고 실제 사용자 기기 오류가 해결됐다고 단정하지 않는다.
-
-## 공식 문서
-
-- https://docs.docker.com/guides/nodejs/containerize/
-- https://docs.docker.com/compose/compose-file/05-services/
-- https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/create-remote-tunnel/
-- https://firebase.google.com/docs/auth/web/redirect-best-practices
+물리 Android Chrome/iOS Safari에서 위치 허용·거부, 실내 정확도 부족, 시작 후 화면 잠금·다른 화면·새로고침 복구, 지정 시간 경과, 마지막 위치 실패 후 재시도, 완료 후 중복 없는 개수를 확인해야 합니다. 합성 센서 브라우저와 실제 대기/API/서명/SQLite 검사는 **위치 공급원의 실제 신뢰성 시험이 아닙니다.** 시작·종료 모델이 GPS불량 자체를 고친다고 설명하지 않습니다.

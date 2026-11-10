@@ -1,20 +1,31 @@
-const test=require('node:test');const assert=require('node:assert/strict');
-const {createVisitSession}=require('../public/js/visit-session.js');
-const {readStayPolicy}=require('../server/stay-policy.js');
-const tick=()=>new Promise(r=>setImmediate(r));
-async function complete(persisted,newlyFound){
- let success;const states=[];let samples=0;
- const response={id:'session',challenge:'challenge',requiredMs:60000,elapsedMs:0,...readStayPolicy({}),phase:'waiting',distanceM:0,accuracyM:5};
- const session=createVisitSession({spaceId:'indoor-01',geolocation:{getCurrentPosition:ok=>{success=ok;}},request:async route=>{
-  if(route==='/api/stays')return response;
-  if(route.endsWith('/cancel'))return null;
-  samples++;return {...response,phase:'complete',elapsedMs:60000,persisted,newlyFound,foundSpaceCount:1};
- },onState:s=>states.push(s)});
- session.start();await tick();success({timestamp:Date.now(),coords:{latitude:36.7678561856971,longitude:126.933492079991,accuracy:5}});await tick();
- return {states,samples};
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { harness, snapshot, flush } = require('./visit-session.test.cjs');
+async function complete(overrides) {
+    const h = harness({ respond: call => call.route.endsWith('/finish')
+        ? snapshot({ phase: 'complete', elapsedMs: 60000, persisted: true, newlyFound: true, foundSpaceCount: 2, ...overrides })
+        : snapshot() });
+    h.session.start(); h.fix(); await flush(); await h.advance(60000);
+    h.session.finish(); h.fix(); await flush(); return h;
 }
-test('saved first completion and duplicate completion explain the distinct count',async()=>{
- const fresh=await complete(true,true);assert.equal(fresh.states.at(-1).persisted,true);assert.match(fresh.states.at(-1).message,/1곳/);assert.match(fresh.states.at(-1).message,/추가/);
- const repeat=await complete(true,false);assert.equal(repeat.states.at(-1).persisted,true);assert.match(repeat.states.at(-1).message,/이미/);assert.match(repeat.states.at(-1).message,/중복/);
- const unpersisted=await complete(false,false);assert.equal(unpersisted.states.at(-1).persisted,false);assert.match(unpersisted.states.at(-1).message,/저장되지/);
+test('starting with an already complete account/place response is idempotent and never launches final GPS', async () => {
+    const h = harness({ respond: () => snapshot({ phase: 'complete', elapsedMs: 60000,
+        persisted: true, newlyFound: false, foundSpaceCount: 1 }) });
+    h.session.start(); h.fix(); await flush();
+    assert.equal(h.state.phase, 'complete'); assert.equal(h.state.newlyFound, false);
+    assert.match(h.state.message, /중복/);
+    h.session.finish(); await h.advance(60000);
+    assert.equal(h.requests.length, 1); assert.equal(h.fixes.length, 1);
+});
+
+test('saved and duplicate completions explain the count, and unsaved completion stays retryable not complete', async () => {
+    const fresh = await complete({}); assert.equal(fresh.state.persisted, true);
+    assert.match(fresh.state.message, /2곳/); assert.match(fresh.state.message, /추가/);
+    const repeat = await complete({ newlyFound: false }); assert.equal(repeat.state.persisted, true);
+    assert.match(repeat.state.message, /이미/); assert.match(repeat.state.message, /중복/);
+    const unsaved = await complete({ persisted: false, newlyFound: false });
+    assert.notEqual(unsaved.state.phase, 'complete'); assert.equal(unsaved.state.persisted, false);
+    assert.equal(unsaved.state.errorCode, 'save_failed'); assert.match(unsaved.state.message, /저장/);
+    assert.equal(unsaved.state.active, true); assert.equal(unsaved.state.busy, false);
+    assert.equal(unsaved.state.foundSpaceCount, undefined);
 });

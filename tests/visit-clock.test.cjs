@@ -1,74 +1,48 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const file = path.join(__dirname, '../public/js/visit-clock.js');
-const dwelling = { phase: 'dwelling', active: true, elapsedMs: 20000, requiredMs: 60000, confirmedAt: 100000, maxGapMs: 12000 };
+const { getDisplayTime } = require('../public/js/visit-clock.js');
+const waiting = { mode: 'start_finish', phase: 'waiting', active: true, elapsedMs: 20000,
+    requiredMs: 90000, confirmedAt: 100000, expiresInMs: 7200000 };
 
-function clock() {
-    assert.ok(fs.existsSync(file), 'display-only clock must interpolate between server confirmations');
-    return require(file).getDisplayTime;
-}
-
-test('display advances each second from the server anchor without changing confirmed time', () => {
-    const read = clock();
-    const state = Object.freeze({ ...dwelling });
-    assert.deepEqual([0, 1000, 2000, 3000].map(delta => read(state, 100000 + delta).remainingMs), [40000, 39000, 38000, 37000]);
+test('server wait projects continuously past 25 seconds and zero only invites explicit final verification', () => {
+    const state = Object.freeze({ ...waiting });
+    assert.deepEqual([0, 1000, 30000, 60000].map(delta => getDisplayTime(state, 100000 + delta).remainingMs),
+        [70000, 69000, 40000, 10000]);
+    const zero = getDisplayTime(state, 170000);
+    assert.equal(zero.elapsedMs, 90000); assert.equal(zero.remainingMs, 0);
+    assert.equal(zero.awaitingFinal, true); assert.equal(zero.serverComplete, false); assert.equal(zero.stale, false);
     assert.equal(state.elapsedMs, 20000);
-    assert.equal(read(state, 102000).serverComplete, false);
-    assert.equal(read(state, 99000).remainingMs, 40000, 'negative local elapsed time cannot increase progress');
 });
 
-test('a known pending location retry holds confirmed progress instead of predicting unobserved time', () => {
-    const state = Object.freeze({ ...dwelling, locationPending: true });
-    const result = clock()(state, 109000);
-    assert.equal(result.elapsedMs, 20000);
-    assert.equal(result.remainingMs, 40000);
-    assert.equal(result.serverComplete, false);
-    assert.equal(result.awaitingFinal, false);
-    assert.equal(clock()(state, 113000).stale, true, 'a paused display still has the original deadline');
-});
-
-test('the actual confirmation deadline bounds projection even when a response consumed part of the gap', () => {
-    const state = { ...dwelling, maxGapMs: 25000, confirmationDeadlineAt: 120000 };
-    assert.equal(clock()(state, 120001).stale, true, 'reply latency must not buy extra unconfirmed display time');
-    assert.equal(clock()(state, 130000).elapsedMs, 40000);
-});
-
-test('zero on the display means awaiting final verification, never local completion', () => {
-    const read = clock();
-    const near = { ...dwelling, elapsedMs: 59000 };
-    const pending = read(near, 102000);
-    assert.equal(pending.elapsedMs, 60000);
-    assert.equal(pending.remainingMs, 0);
-    assert.equal(pending.awaitingFinal, true);
-    assert.equal(pending.serverComplete, false);
-    const approved = read({ ...near, phase: 'complete', active: false, elapsedMs: 60000 }, 200000);
-    assert.equal(approved.remainingMs, 0);
-    assert.equal(approved.awaitingFinal, false);
-    assert.equal(approved.serverComplete, true);
-});
-
-test('no initial location, reset phases, missing confirmation and inactivity cannot interpolate', () => {
-    const read = clock();
-    for (const phase of ['waiting', 'requesting', 'locating', 'outside', 'uncertain', 'error', 'stopped']) {
-        const result = read({ ...dwelling, phase, elapsedMs: 0 }, 108000);
-        assert.equal(result.elapsedMs, 0, phase);
-        assert.equal(result.awaitingFinal, false, phase);
+test('projection requires a live start/finish anchor and bounded expiry; expiry disables final check without inventing completion', () => {
+    for (const override of [{ active: false }, { mode: 'continuous' }, { confirmedAt: null }, { confirmedAt: NaN },
+        { expiresInMs: NaN }, { expiresInMs: Infinity }, { expiresInMs: 7200001 }, { expiresInMs: -1 }]) {
+        const state = { ...waiting, ...override };
+        assert.equal(getDisplayTime(state, 160000).elapsedMs, 20000, JSON.stringify(override));
+        assert.equal(getDisplayTime(state, 160000).awaitingFinal, false);
     }
-    assert.equal(read({ ...dwelling, active: false }, 108000).elapsedMs, 20000);
-    assert.equal(read({ ...dwelling, confirmedAt: null }, 108000).elapsedMs, 20000);
+    const limited = { ...waiting, expiresInMs: 40000 };
+    const expired = getDisplayTime(limited, 150000);
+    assert.equal(expired.stale, true); assert.equal(expired.elapsedMs, 60000);
+    assert.equal(expired.awaitingFinal, false); assert.equal(expired.serverComplete, false);
+    assert.equal(getDisplayTime(waiting, 99000).elapsedMs, 20000);
+    assert.equal(getDisplayTime({ ...waiting, locationPending: true }, 160000).elapsedMs, 80000,
+        'a pending final check cannot throw away time from the durable server wait');
+    assert.equal(getDisplayTime({ ...waiting, phase: 'complete', persisted: false }, 160000).serverComplete, false);
+    assert.equal(getDisplayTime({ ...waiting, phase: 'complete', persisted: true }, 160000).serverComplete, true);
+    for (const phase of ['idle', 'locating', 'requesting', 'error', 'stopped']) {
+        assert.equal(getDisplayTime({ ...waiting, phase }, 160000).elapsedMs, 20000);
+    }
+    assert.equal(getDisplayTime({ ...waiting, confirmedAt: 103000, elapsedMs: 23000 }, 104000).elapsedMs, 24000);
 });
 
-test('interpolation is bounded by the existing sample deadline and reanchors to new server data', () => {
-    const read = clock();
-    const stale = read(dwelling, 160000);
-    assert.equal(stale.stale, true);
-    assert.equal(stale.elapsedMs, 32000, 'never extrapolate indefinitely without samples');
-    assert.equal(stale.awaitingFinal, false);
-    const reset = read({ ...dwelling, elapsedMs: 0, confirmedAt: 160000 }, 161000);
-    assert.equal(reset.elapsedMs, 1000, 'server reset overrides an older projection');
-    assert.equal(read({ ...dwelling, elapsedMs: 23000, confirmedAt: 103100 }, 104100).elapsedMs, 24000);
-    const malformed = read({ ...dwelling, confirmedAt: NaN, maxGapMs: Infinity }, 108000);
-    assert.equal(malformed.elapsedMs, 20000);
+test('an invalid wait cannot advertise readiness and non-finite display inputs stay bounded', () => {
+    for (const value of [NaN, Infinity, -1000]) {
+        const result = getDisplayTime({ ...waiting, elapsedMs: value }, 100000);
+        assert.equal(result.elapsedMs, 0); assert.equal(result.remainingMs, waiting.requiredMs);
+    }
+    assert.equal(getDisplayTime(waiting, NaN).elapsedMs, 20000);
+    assert.equal(getDisplayTime(waiting, Infinity).elapsedMs, 20000);
+    const unsaved = getDisplayTime({ ...waiting, phase: 'complete', persisted: false, elapsedMs: 60000 }, 160000);
+    assert.equal(unsaved.serverComplete, false); assert.equal(unsaved.awaitingFinal, false);
 });

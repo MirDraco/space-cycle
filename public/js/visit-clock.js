@@ -1,4 +1,4 @@
-/* Display only: server responses remain the sole source of completion and persistence. */
+/* Display only: zero invites a final check, never completion or persistence. */
 (function (root, factory) {
     const api = factory();
     if (typeof module === 'object' && module.exports) module.exports = api;
@@ -7,21 +7,17 @@
     function getDisplayTime(state, now) {
         const requiredMs = Number.isFinite(state.requiredMs) && state.requiredMs > 0 ? state.requiredMs : 60000;
         const confirmedMs = Number.isFinite(state.elapsedMs) ? Math.min(requiredMs, Math.max(0, state.elapsedMs)) : 0;
-        const serverComplete = state.phase === 'complete';
-        const validAnchor = Number.isFinite(state.confirmedAt) && Number.isFinite(now);
-        const tracking = state.active === true && state.phase === 'dwelling' && validAnchor;
-        const canEstimate = tracking && state.locationPending !== true;
-        const gapLimit = Number.isFinite(state.maxGapMs) && state.maxGapMs > 0 ? state.maxGapMs : 0;
-        const displayLimit = validAnchor && Number.isFinite(state.confirmationDeadlineAt)
-            ? Math.min(gapLimit, Math.max(0, state.confirmationDeadlineAt - state.confirmedAt)) : gapLimit;
-        const ageMs = validAnchor ? Math.max(0, now - state.confirmedAt) : 0;
-        const stale = tracking && (displayLimit === 0 || ageMs >= displayLimit);
-        const elapsedMs = serverComplete ? requiredMs
-            : Math.min(requiredMs, confirmedMs + (canEstimate ? Math.min(ageMs, displayLimit) : 0));
-        return {
-            elapsedMs, remainingMs: requiredMs - elapsedMs, serverComplete, stale,
-            awaitingFinal: canEstimate && !stale && elapsedMs >= requiredMs,
-        };
+        const serverComplete = state.phase === 'complete' && state.persisted === true;
+        const anchored = Number.isFinite(state.confirmedAt) && Number.isFinite(now);
+        const ageMs = anchored ? Math.max(0, now - state.confirmedAt) : 0;
+        const validExpiry = Number.isFinite(state.expiresInMs) && state.expiresInMs > 0 && state.expiresInMs <= 7200000;
+        const tracking = state.mode === 'start_finish' && state.active === true &&
+            ['waiting', 'ready'].includes(state.phase) && anchored && validExpiry;
+        const stale = tracking && ageMs >= state.expiresInMs;
+        const elapsedMs = serverComplete ? requiredMs : Math.min(requiredMs,
+            confirmedMs + (tracking ? Math.min(ageMs, state.expiresInMs) : 0));
+        return { elapsedMs, remainingMs: requiredMs - elapsedMs, serverComplete, stale,
+            awaitingFinal: tracking && !stale && elapsedMs >= requiredMs };
     }
     return Object.freeze({ getDisplayTime });
 });

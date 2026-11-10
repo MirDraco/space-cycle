@@ -1,5 +1,5 @@
 const express = require('express');
-const { createStayStore } = require('./stay-store.js');
+const { createStayProgress } = require('./stay-progress.js');
 const { authenticate } = require('./firebase-auth.js');
 const { defaultVisits } = require('./visits.js');
 
@@ -12,7 +12,39 @@ function approvedOrigin(origin, host) {
     } catch { return false; }
 }
 
-function createStayRouter({ store = createStayStore(), visits = null, verifyToken } = {}) {
+function exactBody(body, keys) {
+    return body && typeof body === 'object' && !Array.isArray(body) && Object.keys(body).sort().join(',') === keys;
+}
+
+function createStayRateLimiter({ now = Date.now, maxRequests = 60, maxEntries = 10000, windowMs = 60000 } = {}) {
+    const buckets = new Map();
+    return uid => {
+        const time = now();
+        // Fixed windows are insertion-ordered; only expired buckets are scanned.
+        for (const [key, bucket] of buckets) {
+            if (bucket.expiresAt > time) break;
+            buckets.delete(key);
+        }
+        let bucket = buckets.get(uid);
+        if (!bucket && buckets.size < maxEntries) {
+            bucket = { count: 0, expiresAt: time + windowMs };
+            buckets.set(uid, bucket);
+        }
+        if (!bucket || bucket.count >= maxRequests) {
+            const error = new Error('rate_limited');
+            error.status = 429;
+            throw error;
+        }
+        bucket.count++;
+    };
+}
+
+function createStayRouter({ progress = null, visits = null, verifyToken, limiter = createStayRateLimiter() } = {}) {
+    let durable = progress;
+    function state() {
+        if (!durable) durable = createStayProgress({ visits: visits || defaultVisits() });
+        return durable;
+    }
     const router = express.Router();
     // Verified UID owns the session; never accept a client-supplied UID or completion count.
     router.use((req, res, next) => {
@@ -24,32 +56,35 @@ function createStayRouter({ store = createStayStore(), visits = null, verifyToke
     });
     router.use(express.json({ limit: '2kb', strict: true }));
     router.use(authenticate(verifyToken));
+    router.use((req, res, next) => { limiter(req.identity.uid); next(); });
     router.post('/', (req, res) => {
-        if (!req.body || Object.keys(req.body).join(',') !== 'spaceId') return res.status(400).json({ error: 'invalid_payload' });
-        res.status(201).json(store.create(req.body.spaceId, req.identity.uid));
+        if (!exactBody(req.body, 'accuracy,latitude,longitude,spaceId') &&
+            !exactBody(req.body, 'accuracy,attemptId,latitude,longitude,spaceId')) return res.status(400).json({ error: 'invalid_payload' });
+        const { spaceId, latitude, longitude, accuracy, attemptId } = req.body;
+        const result = state().start(spaceId, { latitude, longitude, accuracy }, req.identity.uid, attemptId);
+        res.status(result.created ? 201 : 200).json(result.state);
     });
-    router.post('/:id/sample', (req, res) => {
-        const state = store.sample(req.params.id, req.body, req.identity.uid);
-        if (state.phase === 'complete') {
-            try {
-                // Synchronous transaction/unique constraint makes concurrent retries idempotent.
-                const result = (visits || defaultVisits()).record(req.identity.uid, state.space.id);
-                return res.json({ ...state, ...result, persisted: true });
-            } catch {
-                // No false saved state and no raw DB errors/UIDs in responses or logs.
-                return res.status(503).json({ error: 'save_failed' });
-            }
-        }
-        res.json(state);
+    router.post('/resume', (req, res) => {
+        if (!exactBody(req.body, 'spaceId')) return res.status(400).json({ error: 'invalid_payload' });
+        res.json(state().resume(req.body.spaceId, req.identity.uid));
+    });
+    router.post('/abandon', (req, res) => {
+        if (!exactBody(req.body, 'attemptId,spaceId')) return res.status(400).json({ error: 'invalid_payload' });
+        state().abandon(req.body.spaceId, req.body.attemptId, req.identity.uid);
+        res.sendStatus(204);
+    });
+    router.post('/:id/finish', (req, res) => {
+        if (!exactBody(req.body, 'accuracy,challenge,latitude,longitude')) return res.status(400).json({ error: 'invalid_payload' });
+        res.json(state().finish(req.params.id, req.body, req.identity.uid));
     });
     router.post('/:id/cancel', (req, res) => {
-        if (!req.body || Object.keys(req.body).join(',') !== 'challenge') return res.status(400).json({ error: 'invalid_payload' });
-        store.cancel(req.params.id, req.body.challenge, req.identity.uid);
+        if (!exactBody(req.body, 'challenge')) return res.status(400).json({ error: 'invalid_payload' });
+        state().cancel(req.params.id, req.body.challenge, req.identity.uid);
         res.sendStatus(204);
     });
     router.use((error, req, res, next) => {
         if (res.headersSent) return next(error);
-        const known = ['not_configured', 'capacity', 'session_missing', 'invalid_payload', 'invalid_position', 'stale_challenge', 'wrong_owner', 'login_required', 'invalid_token'];
+        const known = ['not_configured', 'capacity', 'start_cancelled', 'session_missing', 'invalid_payload', 'invalid_position', 'stale_challenge', 'wrong_owner', 'login_required', 'invalid_token', 'outside', 'uncertain', 'too_early', 'save_failed', 'rate_limited'];
         const code = known.includes(error.message) ? error.message
             : error.type === 'entity.too.large' ? 'payload_too_large'
             : error.type === 'entity.parse.failed' ? 'invalid_json' : 'server_error';
@@ -58,4 +93,4 @@ function createStayRouter({ store = createStayStore(), visits = null, verifyToke
     });
     return router;
 }
-module.exports = { createStayRouter };
+module.exports = { createStayRouter, createStayRateLimiter };
