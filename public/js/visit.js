@@ -17,9 +17,10 @@
     const policy = window.SpaceCycleQrPolicy;
     const engine = window.SpaceCycleVisit;
     const transport = window.SpaceCycleVisitRequest;
+    const clock = window.SpaceCycleVisitClock;
     const selection = policy?.readSelection(location.search);
     const place = selection?.valid && data?.getSpace(selection.spaceId);
-    if (!place?.enabled || !engine || !transport) {
+    if (!place?.enabled || !engine || !transport || !clock) {
         document.getElementById('visit-name').textContent = place?.name || '공간을 확인할 수 없어요';
         status.textContent = '이 공간은 아직 체류 테스트를 제공하지 않아요. 공간 목록에서 다시 선택해주세요.';
         return;
@@ -40,13 +41,18 @@
     };
     function paint() {
         if (!latest) return;
-        // Show confirmed server progress only; never predict completion with a local timer.
-        timer.textContent = formatTime(latest.requiredMs - latest.elapsedMs);
+        // Interpolate the display only. The session/API still exclusively decide completion.
+        const display = clock.getDisplayTime(latest, performance.now());
+        timer.textContent = formatTime(display.remainingMs);
         progress.max = latest.requiredMs;
-        progress.value = latest.elapsedMs;
+        progress.value = display.elapsedMs;
+        const message = display.stale ? '위치 확인이 지연되어 예상 시간 표시를 멈췄어요.'
+            : display.awaitingFinal ? '마지막 위치 확인 중… 서버 승인 후 완료돼요.' : latest.message;
+        if (status.textContent !== message) status.textContent = message;
+        status.dataset.displayPhase = display.stale ? 'stale' : display.awaitingFinal ? 'confirming' : latest.phase;
         if (latest.confirmedAt === null) freshness.textContent = '아직 위치를 확인하지 않았어요.';
         else if (latest.phase === 'complete') freshness.textContent = '서버에서 마지막 위치와 1분 체류를 확인했어요.';
-        else freshness.textContent = `마지막 확인 ${Math.floor(Math.max(0, performance.now() - latest.confirmedAt) / 1000)}초 전 · 약 3초마다 갱신`;
+        else freshness.textContent = `마지막 서버 확인 ${Math.floor(Math.max(0, performance.now() - latest.confirmedAt) / 1000)}초 전 · 남은 시간은 예상 표시`;
     }
     const request = transport.createVisitRequest({ getAuth: auth, getOwner: () => runOwner });
     const reload = document.getElementById('visit-reload');
@@ -68,8 +74,12 @@
             start.textContent = state.active ? '체류 확인 중' : state.phase === 'complete' ? '다시 테스트하기' : '위치 확인하고 시작';
             distance.textContent = state.distanceM === null ? '—' : `${Math.round(state.distanceM)}m`;
             accuracy.textContent = state.accuracyM === null ? '—' : `±${Math.round(state.accuracyM)}m`;
-            if (paintTimer !== null) clearInterval(paintTimer);
-            paintTimer = state.active ? setInterval(paint, 1000) : null;
+            // A single display ticker avoids pushing the next tick back on every API reply.
+            if (state.active && paintTimer === null) paintTimer = setInterval(paint, 250);
+            else if (!state.active && paintTimer !== null) {
+                clearInterval(paintTimer);
+                paintTimer = null;
+            }
             paint();
             if (state.phase === 'complete' && state.persisted && user()?.uid === runOwner) {
                 void auth().refreshFoundSpaces().catch(() => {});

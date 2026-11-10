@@ -36,6 +36,8 @@ test('location is opt-in, fresh fixes drive server elapsed time, and server comp
     x.controller.start();await tick();
     assert.equal(x.gps.options.maximumAge,0);assert.equal(x.gps.options.enableHighAccuracy,true);
     x.fix();await tick();assert.equal(x.states.at(-1).phase,'dwelling');
+    assert.equal(x.states.at(-1).maxGapMs,12000,'display freshness limit must follow server deadline');
+    assert.equal(x.states.at(-1).sampleEveryMs,3000,'existing polling interval must remain unchanged');
     for(let i=0;i<12;i++){await x.advance(5000);x.fix();await tick();}
     assert.equal(x.states.at(-1).phase,'complete');assert.equal(x.states.at(-1).active,false);
     const count=x.requests;await x.advance(5000);assert.equal(x.requests,count);

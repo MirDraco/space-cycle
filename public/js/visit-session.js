@@ -45,6 +45,7 @@
             phase, message, active, elapsedMs: snapshot?.elapsedMs || 0,
             requiredMs: snapshot?.requiredMs || 60000,
             distanceM: snapshot?.distanceM ?? null, accuracyM: snapshot?.accuracyM ?? null,
+            maxGapMs: snapshot?.maxGapMs ?? 0, sampleEveryMs: snapshot?.sampleEveryMs ?? 0,
             confirmedAt: lastConfirmedAt, ...extra,
         });
         function clearTimers() {
