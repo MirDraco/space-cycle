@@ -45,6 +45,18 @@ test('server resets, offline and background immediately replace estimated progre
  h.sample({phase:'dwelling',active:true,elapsedMs:10000});h.event('offline');assert.equal(h.elements.get('visit-timer').textContent,'01:00');assert.equal(h.refreshes,0);
 });
 
+test('short GPS retries pause projection without zeroing confirmed progress or approving completion',()=>{
+ const h=harness();h.elements.get('visit-start').click();h.sample({phase:'dwelling',active:true,elapsedMs:20000});
+ h.advance(9000);
+ h.sample({phase:'dwelling',active:true,elapsedMs:20000,confirmedAt:100000,locationPending:true,message:'위치 응답이 늦어 다시 확인 중이에요.'});
+ assert.equal(h.elements.get('visit-timer').textContent,'00:40','known location loss must show confirmed progress only');
+ h.advance(1000);assert.equal(h.elements.get('visit-timer').textContent,'00:40');
+ assert.match(h.elements.get('visit-status').textContent,/다시 확인/);assert.equal(h.refreshes,0);assert.equal(h.elements.get('visit-start').disabled,true);
+ assert.match(h.elements.get('visit-freshness').textContent,/재확인 중.*확인값/,'retry copy must not call paused confirmed progress an estimate');
+ h.sample({phase:'dwelling',active:true,elapsedMs:31000,locationPending:false});h.advance(1000);
+ assert.equal(h.elements.get('visit-timer').textContent,'00:28','a real server confirmation resumes projection');
+});
+
 test('delayed watchdog cannot let an unconfirmed estimate run indefinitely',()=>{
  const h=harness();h.elements.get('visit-start').click();h.sample({phase:'dwelling',active:true,elapsedMs:55000});h.advance(12000);
  assert.match(h.elements.get('visit-status').textContent,/위치 확인.*지연/);assert.equal(h.refreshes,0);assert.notEqual(h.elements.get('visit-status').dataset.phase,'complete');

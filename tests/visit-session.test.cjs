@@ -52,8 +52,8 @@ test('stop discards late GPS callbacks and a restart does not inherit prior elap
     assert.equal(x.states.at(-1).elapsedMs,0);x.controller.stop();
 });
 
-test('denied permission and a GPS timeout fail closed instead of counting time', async () => {
-    for(const code of [1,2,3]){
+test('permission denial and unavailable GPS fail closed instead of counting time', async () => {
+    for(const code of [1,2]){
         const x=setup();x.controller.start();await tick();x.gps.error({code});await tick();
         assert.equal(x.states.at(-1).phase,'error');assert.equal(x.states.at(-1).elapsedMs,0);
         assert.equal(x.states.at(-1).active,false);

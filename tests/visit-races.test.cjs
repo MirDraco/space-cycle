@@ -35,6 +35,7 @@ function harness({ holdCreate = false, holdSample = false, failSample = false } 
 test('pending create timeout and restart ignore a late old session and cancel it', async()=>{
     const h=harness({holdCreate:true});h.session.start();await flush();
     await h.advance(30001);assert.equal(h.states.at(-1).phase,'error');
+    assert.equal(h.states.at(-1).errorCode,'request_timeout','waiting for session creation is not a GPS timeout');
     h.session.start();await flush();
     h.creates[0].wait.resolve(h.creates[0].response);await flush();
     assert.equal(h.fixes.length,0);assert.ok(h.cancels.includes(h.creates[0].response.id));

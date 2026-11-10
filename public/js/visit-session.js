@@ -40,13 +40,14 @@
         let controller = null;
         let lastFixTimestamp = -Infinity;
         let lastConfirmedAt = null;
+        let deadlineAt = 0;
         const current = run => active && generation === run;
         const emit = (phase, message, extra = {}) => onState({
             phase, message, active, elapsedMs: snapshot?.elapsedMs || 0,
             requiredMs: snapshot?.requiredMs || 60000,
             distanceM: snapshot?.distanceM ?? null, accuracyM: snapshot?.accuracyM ?? null,
             maxGapMs: snapshot?.maxGapMs ?? 0, sampleEveryMs: snapshot?.sampleEveryMs ?? 0,
-            confirmedAt: lastConfirmedAt, ...extra,
+            confirmedAt: lastConfirmedAt, locationPending: false, ...extra,
         });
         function clearTimers() {
             if (pollTimer !== null) unschedule(pollTimer);
@@ -74,10 +75,19 @@
             const failure = requestFailure(error);
             stop(failure.message, 'error', failure.code);
         }
+        function deadlineExpired() {
+            if (!snapshot) { failRequest({ code: 'request_timeout' }); return; }
+            const initial = lastConfirmedAt === null;
+            stop(initial
+                ? '처음 위치를 30초 동안 서버에서 확인하지 못했어요. 위치 설정과 연결 상태를 확인한 뒤 다시 시작해주세요. (location_timeout)'
+                : '마지막 서버 확인 후 12초 동안 새 위치 확인이 완료되지 않아 초기화했어요. 위치 설정과 연결 상태를 확인한 뒤 다시 시작해주세요. (location_gap)',
+            'error', initial ? 'location_timeout' : 'location_gap');
+        }
         function armDeadline(run, milliseconds) {
             if (watchdog !== null) unschedule(watchdog);
+            deadlineAt = now() + milliseconds;
             watchdog = schedule(() => {
-                if (current(run)) fail('위치 확인이 끊겨 시간을 초기화했어요. 위치와 인터넷을 확인하고 다시 시작해주세요.');
+                if (current(run)) deadlineExpired();
             }, milliseconds);
         }
         async function submit(run, position) {
@@ -126,16 +136,35 @@
         }
         function locate(run) {
             if (!current(run)) return;
+            if (now() >= deadlineAt) { deadlineExpired(); return; }
+            // A location attempt settles once, even if a broken provider delivers late callbacks.
+            let settled = false;
+            const accept = () => {
+                if (settled || !current(run)) return false;
+                settled = true;
+                if (now() >= deadlineAt) { deadlineExpired(); return false; }
+                return true;
+            };
             try {
-                geolocation.getCurrentPosition(position => { void submit(run, position); }, error => {
-                    if (!current(run)) return;
+                geolocation.getCurrentPosition(position => { if (accept()) void submit(run, position); }, error => {
+                    if (!accept()) return;
+                    if (error?.code === 3) {
+                        // Retry only acquisition: never replay a coordinate or extend the server gap.
+                        emit(lastConfirmedAt === null ? 'locating' : snapshot.phase,
+                            lastConfirmedAt === null
+                                ? '처음 위치 응답이 늦어 다시 확인 중이에요. 아직 체류 시간은 시작되지 않았어요.'
+                                : '위치 응답이 늦어 다시 확인 중이에요. 확인된 시간은 유지해요.',
+                            { locationPending: true });
+                        pollTimer = schedule(() => locate(run), 250);
+                        return;
+                    }
                     const messages = {
                         1: '위치 권한이 거부되었어요. 사이트 설정에서 위치를 허용한 뒤 다시 시작해주세요.',
                         2: '위치를 찾을 수 없어 초기화했어요. GPS 신호가 잘 잡히는 안전한 곳에서 다시 시도해주세요.',
-                        3: '위치 확인 시간이 초과되어 초기화했어요. 잠시 후 다시 시작해주세요.',
                     };
                     fail(messages[error?.code] || '위치 확인에 실패해 시간을 초기화했어요.');
-                }, { enableHighAccuracy: true, maximumAge: 0, timeout: 6000 });
+                }, { enableHighAccuracy: true, maximumAge: 0,
+                    timeout: Math.max(1, Math.min(lastConfirmedAt === null ? 15000 : 6000, deadlineAt - now())) });
             } catch { fail('이 브라우저에서 위치를 확인할 수 없어요.'); }
         }
         async function start() {
@@ -152,6 +181,7 @@
                 const next = await request('/api/stays', { spaceId }, { signal: controller.signal });
                 if (!current(run)) { discard(next); return; }
                 snapshot = next;
+                armDeadline(run, 30000);
                 emit('locating', '위치 권한을 허용해주세요. 처음 위치를 찾는 중이에요.');
                 locate(run);
             } catch (error) {

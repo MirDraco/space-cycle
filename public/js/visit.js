@@ -47,12 +47,13 @@
         progress.max = latest.requiredMs;
         progress.value = display.elapsedMs;
         const message = display.stale ? '위치 확인이 지연되어 예상 시간 표시를 멈췄어요.'
+            : latest.locationPending ? `${latest.message}${latest.confirmedAt === null ? '' : ' 남은 시간은 마지막 서버 확인값이에요.'}`
             : display.awaitingFinal ? '마지막 위치 확인 중… 서버 승인 후 완료돼요.' : latest.message;
         if (status.textContent !== message) status.textContent = message;
         status.dataset.displayPhase = display.stale ? 'stale' : display.awaitingFinal ? 'confirming' : latest.phase;
         if (latest.confirmedAt === null) freshness.textContent = '아직 위치를 확인하지 않았어요.';
         else if (latest.phase === 'complete') freshness.textContent = '서버에서 마지막 위치와 1분 체류를 확인했어요.';
-        else freshness.textContent = `마지막 서버 확인 ${Math.floor(Math.max(0, performance.now() - latest.confirmedAt) / 1000)}초 전 · 남은 시간은 예상 표시`;
+        else freshness.textContent = `마지막 서버 확인 ${Math.floor(Math.max(0, performance.now() - latest.confirmedAt) / 1000)}초 전 · ${latest.locationPending ? '위치 재확인 중 · 마지막 서버 확인값 표시' : '남은 시간은 예상 표시'}`;
     }
     const request = transport.createVisitRequest({ getAuth: auth, getOwner: () => runOwner });
     const reload = document.getElementById('visit-reload');

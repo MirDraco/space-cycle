@@ -9,10 +9,11 @@
         const confirmedMs = Number.isFinite(state.elapsedMs) ? Math.min(requiredMs, Math.max(0, state.elapsedMs)) : 0;
         const serverComplete = state.phase === 'complete';
         const validAnchor = Number.isFinite(state.confirmedAt) && Number.isFinite(now);
-        const canEstimate = state.active === true && state.phase === 'dwelling' && validAnchor;
+        const tracking = state.active === true && state.phase === 'dwelling' && validAnchor;
+        const canEstimate = tracking && state.locationPending !== true;
         const gapLimit = Number.isFinite(state.maxGapMs) && state.maxGapMs > 0 ? state.maxGapMs : 0;
         const ageMs = validAnchor ? Math.max(0, now - state.confirmedAt) : 0;
-        const stale = canEstimate && (gapLimit === 0 || ageMs >= gapLimit);
+        const stale = tracking && (gapLimit === 0 || ageMs >= gapLimit);
         const elapsedMs = serverComplete ? requiredMs
             : Math.min(requiredMs, confirmedMs + (canEstimate ? Math.min(ageMs, gapLimit) : 0));
         return {

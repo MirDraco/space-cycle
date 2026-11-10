@@ -19,6 +19,16 @@ test('display advances each second from the server anchor without changing confi
     assert.equal(read(state, 99000).remainingMs, 40000, 'negative local elapsed time cannot increase progress');
 });
 
+test('a known pending location retry holds confirmed progress instead of predicting unobserved time', () => {
+    const state = Object.freeze({ ...dwelling, locationPending: true });
+    const result = clock()(state, 109000);
+    assert.equal(result.elapsedMs, 20000);
+    assert.equal(result.remainingMs, 40000);
+    assert.equal(result.serverComplete, false);
+    assert.equal(result.awaitingFinal, false);
+    assert.equal(clock()(state, 113000).stale, true, 'a paused display still has the original deadline');
+});
+
 test('zero on the display means awaiting final verification, never local completion', () => {
     const read = clock();
     const near = { ...dwelling, elapsedMs: 59000 };
