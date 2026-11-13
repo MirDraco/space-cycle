@@ -47,6 +47,7 @@ const pages = [
     ['/visit', 'visit.html', 'qr'],
     ['/badges', 'badges.html', 'badges'],
     ['/login', 'login.html', null],
+    ['/privacy', 'privacy.html', null],
 ];
 
 for (const [route, filename, active] of pages) {

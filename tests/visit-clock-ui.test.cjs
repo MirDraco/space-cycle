@@ -6,17 +6,18 @@ const vm = require('node:vm');
 const { snapshot, idle, flush, deferred } = require('./visit-session.test.cjs');
 const root = path.resolve(__dirname, '..');
 const callResult = (status, body) => ({ httpStatus: status, body });
-function harness({ initial = idle(), ready = true, uid = 'A', secure = true, respond } = {}) {
+function harness({ initial = idle(), ready = true, uid = 'A', secure = true, respond, consent } = {}) {
     let time = 100000, user = uid ? { uid } : null, authReady = ready, serial = 0, refreshes = 0;
     const tasks = new Map(), handlers = new Map(), elements = new Map(), fixes = [], requests = [];
     const schedule = (fn, ms, repeat = false) => { const id = ++serial; tasks.set(id, { fn, at: time + ms, ms, repeat }); return id; };
     for (const name of ['visit-status', 'visit-start', 'visit-finish', 'visit-stop', 'visit-timer', 'visit-progress',
         'visit-distance', 'visit-accuracy', 'visit-freshness', 'visit-login', 'visit-name', 'visit-condition',
-        'visit-back', 'visit-reload', 'visit-build', 'visit-diagnostics']) {
+        'visit-back', 'visit-reload', 'visit-build', 'visit-diagnostics', ...(consent === undefined ? [] : ['visit-consent', 'visit-consent-box'])]) {
         const listeners = {};
         elements.set(name, { textContent: '', hidden: false, disabled: false, dataset: {}, value: 0, max: 60000,
             href: '', addEventListener: (event, fn) => { listeners[event] = fn; },
             click: () => { const element = elements.get(name); if (!element.disabled) listeners.click?.(); },
+            fire: event => listeners[event]?.(), checked: name === 'visit-consent' ? consent === true : undefined,
             setAttribute() {}, removeAttribute() {} });
     }
     const document = { hidden: false, getElementById: name => elements.get(name) || null,
@@ -279,4 +280,21 @@ test('account switch invalidates late create, finish and resume without cancelli
         assert.equal(h.requests.some(call => call.route.endsWith('/cancel')), false);
         assert.equal(h.requests.at(-1).owner, 'B');
     }
+});
+
+test('location is not requested until the user agrees on screen; the agreement box stays until consent is given', async () => {
+    const h = harness({ consent: false }); await flush();
+    const start = h.elements.get('visit-start'), consent = h.elements.get('visit-consent'), box = h.elements.get('visit-consent-box');
+    assert.equal(start.disabled, true); assert.equal(box.hidden, false);
+    assert.match(h.elements.get('visit-status').textContent, /동의하면 시작/);
+    start.click(); assert.equal(h.fixes.length, 0, 'no GPS request without consent');
+    consent.checked = true; consent.fire('change');
+    assert.equal(start.disabled, false);
+    start.click(); assert.equal(h.fixes.length, 1); h.fix(); await flush();
+    assert.equal(h.elements.get('visit-status').dataset.phase, 'waiting');
+    assert.equal(box.hidden, true, 'agreed box is tucked away while waiting');
+    consent.checked = false; consent.fire('change'); await h.advance(60000);
+    assert.equal(box.hidden, false, 'withdrawn consent shows the box again');
+    assert.equal(h.elements.get('visit-finish').disabled, true);
+    h.elements.get('visit-finish').click(); assert.equal(h.fixes.length, 1);
 });

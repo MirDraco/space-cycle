@@ -381,3 +381,18 @@ summary:focus-visible,
           outline: 1px solid CanvasText;
      }
 }
+/* Privacy policy and consent */
+.policy section { margin-top: 30px; }
+.policy h2 { font-size: 17px; line-height: 1.5; letter-spacing: -0.03em; word-break: keep-all; }
+.policy p, .policy li { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.8; word-break: keep-all; }
+.policy ul { padding-left: 18px; }
+.policy strong { color: var(--text); }
+.policy-date { margin-top: 10px; color: var(--muted); font-size: 12px; }
+.policy table { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 12px; line-height: 1.6; table-layout: fixed; }
+.policy th, .policy td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; word-break: keep-all; overflow-wrap: anywhere; }
+.policy th { color: var(--text); font-weight: 700; }
+.policy td { color: var(--muted); }
+.policy-link { color: var(--muted); text-decoration: underline; }
+.consent-box { display: flex; gap: 10px; align-items: flex-start; margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; color: var(--text); font-size: 13px; line-height: 1.7; word-break: keep-all; cursor: pointer; }
+.consent-box input { flex: none; width: 18px; height: 18px; margin-top: 3px; accent-color: var(--primary); }
+.consent-box a { color: var(--muted); }

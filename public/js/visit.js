@@ -6,6 +6,11 @@
     const timer = element('visit-timer'), progress = element('visit-progress');
     const freshness = element('visit-freshness'), diagnostics = element('visit-diagnostics');
     const login = element('visit-login'), reload = element('visit-reload'), build = element('visit-build');
+    const consent = element('visit-consent'), consentBox = element('visit-consent-box');
+    const CONSENT_KEY = 'spacecycle-location-consent-v1';
+    try { if (consent && window.localStorage?.getItem(CONSENT_KEY)) consent.checked = true; } catch {}
+    // Location is requested only after the user agrees on this screen (see /privacy#location).
+    const consented = () => !consent || consent.checked === true;
     const auth = () => window.SpaceCycleAuth;
     const user = () => auth()?.getUser();
     const data = window.SpaceCycleSpaces, policy = window.SpaceCycleQrPolicy;
@@ -58,11 +63,12 @@
         const hasWait = ['waiting', 'ready'].includes(latest.phase);
         const ready = auth()?.isReady && Boolean(user()) && user()?.uid === runOwner;
         const enabled = ready && visible() && online() && !latest.busy && !latest.suspended;
-        start.disabled = !enabled || latest.active || !canLocate();
+        start.disabled = !enabled || latest.active || !canLocate() || !consented();
+        if (consentBox) consentBox.hidden = consented() && (hasWait || latest.phase === 'complete');
         start.hidden = hasWait || latest.phase === 'complete';
         start.textContent = latest.busy ? '위치 확인 중' : '위치 확인하고 시작';
         finish.hidden = !hasWait;
-        finish.disabled = !enabled || !display.awaitingFinal || !canLocate();
+        finish.disabled = !enabled || !display.awaitingFinal || !canLocate() || !consented();
         finish.textContent = latest.busy ? '마지막 위치 확인 중…' : latest.errorCode ? '마지막 위치 다시 확인' : '마지막 위치 확인';
         stop.hidden = !latest.active && latest.phase !== 'complete';
         stop.disabled = !ready || !online() || latest.cancelling || latest.suspended;
@@ -72,6 +78,7 @@
         else if (hasWait && display.awaitingFinal && !latest.busy && !latest.errorCode && !latest.suspended) {
             message = '대기 시간이 지났어요. 마지막 위치 확인 버튼을 눌러주세요. 아직 완료·저장 전이에요.';
         }
+        if (!consented() && latest.phase !== 'complete' && !latest.busy) message = hasWait ? '위치 정보 이용에 동의하면 마지막 위치를 확인할 수 있어요.' : '위치 정보 이용에 동의하면 시작할 수 있어요.';
         if (!canLocate() && latest.phase !== 'complete') message = '진행 상황은 불러왔어요. 시작·종료 위치는 Safari 또는 Chrome에서 HTTPS 주소를 열어 확인해주세요.';
         status.textContent = message;
         status.dataset.displayPhase = display.stale ? 'expired' : display.awaitingFinal ? 'ready' : latest.phase;
@@ -135,8 +142,15 @@
     const explicit = action => {
         if (visible() && online() && auth()?.isReady && user()?.uid === runOwner && session) void session[action]();
     };
-    start.addEventListener('click', () => explicit('start'));
-    finish.addEventListener('click', () => explicit('finish'));
+    consent?.addEventListener('change', () => {
+        try {
+            if (consent.checked) window.localStorage?.setItem(CONSENT_KEY, new Date().toISOString());
+            else window.localStorage?.removeItem(CONSENT_KEY);
+        } catch {}
+        paint();
+    });
+    start.addEventListener('click', () => { if (consented()) explicit('start'); });
+    finish.addEventListener('click', () => { if (consented()) explicit('finish'); });
     stop.addEventListener('click', () => explicit('stop'));
     const suspend = () => { session?.suspend(); stopPainting(); };
     const restore = () => { if (visible() && online() && user()?.uid === runOwner) void session?.restore(); };

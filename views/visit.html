@@ -36,6 +36,10 @@
             <p class="visit-freshness" id="visit-freshness">아직 위치를 확인하지 않았어요.</p>
             <p class="visit-freshness" id="visit-diagnostics" hidden></p>
         </section>
+        <label class="consent-box" id="visit-consent-box">
+            <input type="checkbox" id="visit-consent">
+            <span>시작·마지막 위치 확인 때 위도·경도·정확도를 서버로 보내 반경 판정에만 쓰는 것에 동의해요. 원본 좌표는 저장하지 않아요. <a href="/privacy#location">자세히</a></span>
+        </label>
         <div class="camera-controls">
             <button class="camera-stop" id="visit-reload" type="button" hidden>최신 화면 다시 불러오기</button>
             <a class="page-action" id="visit-login" href="/login?next=%2Fvisit%3Fspace%3Dindoor-01" hidden>로그인하고 계속하기</a>
@@ -52,13 +56,14 @@
             <p>00:00은 완료가 아니에요. ‘마지막 위치 확인’ 버튼을 직접 눌러 새 위치를 보내고 서버가 시간·위치·기록 저장을 승인해야 완료돼요. 종료 위치의 정확도 부족이나 반경 이탈, GPS·통신 오류가 있어도 기다린 진행은 유지하며 다시 확인할 수 있어요.</p>
             <p>시작·종료 위치 획득은 각각 시도당 최대 15초, 전체 최대 30초예요. 응답 시간 초과나 오래된 측정값은 짧게 쉬고 다시 확인하지만 전체 기한을 늘리지는 않아요. 시작 위치를 찾는 시간은 대기 시간에 포함하지 않아요.</p>
             <p>‘진행 취소’를 누르면 서버의 취소를 확인한 후 화면을 비워요. 취소 응답을 받지 못하면 진행을 다시 불러와 확인해요. 이미 저장된 ‘내가 찾은 스페이스’ 기록은 취소해도 삭제하지 않아요.</p>
-            <p>테스트 반경은 300m예요. 정확도는 50m 이하이고, 중심점까지 거리와 정확도의 합이 300m 이하여야 해요. 실내 GPS가 불안정하면 창가 등 신호가 잘 잡히는 안전한 곳에서 다시 시도해주세요. 반경은 자동으로 넓히지 않아요.</p>
+            <p>테스트 반경은 300m예요. 정확도는 100m 이하이고, 중심점까지 거리와 정확도의 합이 300m 이하여야 해요. 실내 GPS가 불안정하면 창가 등 신호가 잘 잡히는 안전한 곳에서 다시 시도해주세요. 반경은 자동으로 넓히지 않아요.</p>
             <p>측정값이 오래됐거나 이전 측정 시각이 반복되면 그 위치는 보내지 않고 새 위치를 다시 받아요. 화면의 위치 응답 대기 시간·측정값 나이·gps_ 코드는 이 기기에서만 표시하며 원본 좌표나 로그인 토큰을 진단 기록으로 저장하지 않아요.</p>
             <p>Android에서 지연이 계속되면 설정 → 앱 → Chrome → 권한 → 위치에서 정확한 위치 사용 여부와, 설정 → 위치 → 위치 서비스 → 위치 정확도 개선을 확인해주세요. 기기마다 메뉴 이름은 다를 수 있어요.</p>
             <p>서버가 완료를 확인하고 저장하면 로그인한 계정의 ‘내가 찾은 스페이스’에 추가해요. 같은 공간은 여러 번 완료해도 1곳으로 세요. 뱃지·스티커 보상은 아직 없어요. QR 링크나 브라우저 GPS만으로 방문 조작을 완전히 차단하지는 못해요.</p>
         </details>
         <noscript><p class="page-note">위치·체류 확인은 JavaScript가 필요해요.</p></noscript>
         <a class="scanner-back" id="visit-back" href="/spaces">공간 정보로 돌아가기</a>
+        <p class="page-note"><a class="policy-link" href="/privacy">개인정보 처리방침</a></p>
         <p class="visit-build" id="visit-build"></p>
     </main>
     <!-- app-navigation -->
