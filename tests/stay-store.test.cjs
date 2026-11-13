@@ -50,17 +50,16 @@ test('outside, uncertain accuracy and interrupted samples reset continuous time'
     assert.equal(s.phase,'dwelling');assert.equal(s.elapsedMs,0);assert.equal(s.reason,'gap');
 });
 
-test('accuracy circle must fit inside the radius; invalid numeric positions never count', () => {
+test('the measured point must be inside the radius with a bounded GPS error; invalid numeric positions never count', () => {
     const { assessPosition, center }=setup();
     const location=require('../public/js/space-data.js').getSpace('indoor-01');
     assert.equal(assessPosition(location,center).phase,'inside');
     const atMeters = (meters, accuracy) => ({ ...center, latitude: center.latitude + meters / 6371000 * 180 / Math.PI, accuracy });
-    assert.equal(assessPosition(location,atMeters(50,50)).phase,'inside','50m plus 50m uncertainty fits the 100m radius');
-    assert.equal(assessPosition(location,atMeters(80,15)).phase,'inside');
-    assert.equal(assessPosition(location,atMeters(90,15)).phase,'uncertain','accuracy circle crossing the edge does not count');
-    assert.equal(assessPosition(location,atMeters(110,5)).phase,'outside');
-    assert.equal(assessPosition(location,atMeters(20,60)).phase,'uncertain','the separate 50m accuracy limit still applies');
-    assert.equal(assessPosition(location,{...center,latitude:center.latitude+0.0008,accuracy:30}).phase,'uncertain');
+    assert.equal(assessPosition(location,atMeters(95,50)).phase,'inside','inside the 100m radius with the maximum allowed 50m error');
+    assert.equal(assessPosition(location,atMeters(99.9,5)).phase,'inside');
+    assert.equal(assessPosition(location,atMeters(101,5)).phase,'outside');
+    assert.equal(assessPosition(location,atMeters(20,51)).phase,'uncertain','the separate 50m accuracy limit still applies');
+    assert.equal(assessPosition(location,{...center,latitude:center.latitude+0.0010,accuracy:30}).phase,'outside');
     for(const value of [NaN,Infinity,'36.7',null]) assert.throws(()=>assessPosition(location,{...center,latitude:value}));
     assert.throws(()=>assessPosition(location,{...center,accuracy:-1}));
     assert.throws(()=>assessPosition(location,{...center,longitude:200}));

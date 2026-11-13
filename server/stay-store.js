@@ -22,9 +22,10 @@ function assessPosition(space, sample) {
     const lonDelta = radians(longitude - space.longitude);
     const a = Math.sin(latDelta / 2) ** 2 + Math.cos(radians(space.latitude)) * Math.cos(radians(latitude)) * Math.sin(lonDelta / 2) ** 2;
     const distanceM = 6371000 * 2 * Math.atan2(Math.sqrt(Math.min(1, a)), Math.sqrt(Math.max(0, 1 - a)));
-    // Count only if the accuracy circle fits inside the owner's configured radius.
+    // The measured point must be inside the radius, and the reported GPS error must be within
+    // the place's separate accuracy cap so a coarse fix cannot pass by chance.
     const phase = distanceM > space.radiusM ? 'outside'
-        : accuracy > space.maxAccuracyM || distanceM + accuracy > space.radiusM ? 'uncertain' : 'inside';
+        : accuracy > space.maxAccuracyM ? 'uncertain' : 'inside';
     return { phase, distanceM, accuracyM: accuracy };
 }
 
