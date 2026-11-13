@@ -138,6 +138,8 @@ test('found spaces use the bearer-authenticated backend, even with no count widg
         if (!noCount) assert.equal(h.elements.get('found-space-count').textContent, '2');
         const event = h.events.find(({ event }) => event.type === 'spacecycle:spaceschange').event;
         assert.equal(event.detail.count, 2);
+        assert.deepEqual([...event.detail.foundSpaces], [...h.window.SpaceCycleAuth.foundSpaces]);
+        assert.equal(event.detail.foundSpaces.length, 2);
         assert.equal(await h.window.SpaceCycleAuth.refreshFoundSpaces(), 2);
         assert.equal(h.requests.length, 2);
         assert.equal(h.logs.length, 0);

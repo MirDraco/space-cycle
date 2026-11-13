@@ -7,22 +7,52 @@
     <link rel="icon" href="/images/rounded-favicon_32.png">
     <link rel="stylesheet" href="/css/style.css">
     <script src="/js/theme.js"></script>
+    <script src="/js/badges.js" defer></script>
     <script type="module" src="/js/auth.js"></script>
-    <title>뱃지보기 · Space Cycle</title>
+    <title>배지보기 · Space Cycle</title>
 </head>
 <body class="app-shell">
     <!-- app-header -->
     <main class="page-main">
         <p class="page-eyebrow">MY COLLECTION</p>
-        <h1 class="page-title">뱃지보기</h1>
+        <h1 class="page-title">배지보기</h1>
         <p class="page-description">공간에서의 경험을 모아둘 곳이에요.</p>
-        <section class="info-panel badge-empty" aria-labelledby="badge-heading">
-            <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><circle cx="32" cy="25" r="17"/><path d="m21 39-4 19 15-6 15 6-4-19"/><path d="m32 15 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z"/></svg>
-            <span class="status-pill">준비 중</span>
-            <h2 id="badge-heading">나만의 공간 컬렉션</h2>
-            <p>방문 인증과 보상 기능을 준비하고 있어요.<br>획득한 뱃지의 조회·저장은 아직 제공하지 않아요.</p>
+        <section class="info-panel badge-board" id="badge-board" aria-labelledby="badge-heading">
+            <div class="badge-board-head">
+                <h2 id="badge-heading">외부 공간 배지</h2>
+                <span class="status-pill" id="badge-progress">– / 5</span>
+            </div>
+            <p class="badge-status" id="badge-status" role="status" aria-live="polite">로그인 상태를 확인하는 중이에요.</p>
+            <ul class="badge-grid">
+                <li class="badge-card" data-badge="outdoor-01" data-name="학예관·멀티미디어관 앞 야외 광장" data-earned="false">
+                    <img src="/images/badges/out01.webp" alt="학예관·멀티미디어관 앞 야외 광장 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                    <span class="badge-name">학예관·멀티미디어관 앞 야외 광장</span>
+                    <span class="badge-state">미획득</span>
+                </li>
+                <li class="badge-card" data-badge="outdoor-02" data-name="SCH미디어랩스관 뒤편 벤치" data-earned="false">
+                    <img src="/images/badges/out02.webp" alt="SCH미디어랩스관 뒤편 벤치 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                    <span class="badge-name">SCH미디어랩스관 뒤편 벤치</span>
+                    <span class="badge-state">미획득</span>
+                </li>
+                <li class="badge-card" data-badge="outdoor-03" data-name="소운동장·체육관 사이 정자" data-earned="false">
+                    <img src="/images/badges/out03.webp" alt="소운동장·체육관 사이 정자 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                    <span class="badge-name">소운동장·체육관 사이 정자</span>
+                    <span class="badge-state">미획득</span>
+                </li>
+                <li class="badge-card" data-badge="outdoor-04" data-name="산학협력관–학성사 연결길" data-earned="false">
+                    <img src="/images/badges/out04.webp" alt="산학협력관–학성사 연결길 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                    <span class="badge-name">산학협력관–학성사 연결길</span>
+                    <span class="badge-state">미획득</span>
+                </li>
+                <li class="badge-card" data-badge="outdoor-05" data-name="대운동장 정면 길" data-earned="false">
+                    <img src="/images/badges/out05.webp" alt="대운동장 정면 길 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                    <span class="badge-name">대운동장 정면 길</span>
+                    <span class="badge-state">미획득</span>
+                </li>
+            </ul>
+            <p class="page-note">외부 공간에서 체류를 완료하면 해당 배지가 흑백에서 컬러로 바뀌어요.</p>
         </section>
-        <a class="page-action" href="/spaces">공간 먼저 둘러보기 <span aria-hidden="true">→</span></a>
+        <a class="page-action" href="/spaces">공간 둘러보기 <span aria-hidden="true">→</span></a>
     </main>
     <!-- app-navigation -->
 </body>

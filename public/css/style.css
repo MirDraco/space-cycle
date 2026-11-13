@@ -396,3 +396,18 @@ summary:focus-visible,
 .consent-box { display: flex; gap: 10px; align-items: flex-start; margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; color: var(--text); font-size: 13px; line-height: 1.7; word-break: keep-all; cursor: pointer; }
 .consent-box input { flex: none; width: 18px; height: 18px; margin-top: 3px; accent-color: var(--primary); }
 .consent-box a { color: var(--muted); }
+
+/* Badge board: 2-column grid; unearned badges are grayscale, earned ones in full color. */
+.badge-board-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.badge-board-head h2 { margin-top: 0; font-size: 18px; }
+.badge-status { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.7; word-break: keep-all; }
+.badge-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 16px; margin-top: 22px; list-style: none; }
+.badge-card { display: grid; justify-items: center; gap: 6px; text-align: center; }
+.badge-card:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - 8px); justify-self: center; }
+.badge-card img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain;
+    filter: grayscale(1) brightness(0.9); opacity: 0.55; transition: filter 0.4s ease, opacity 0.4s ease; }
+.badge-card[data-earned="true"] img { filter: none; opacity: 1; }
+.badge-name { margin-top: 4px; font-size: 12px; font-weight: 600; line-height: 1.5; word-break: keep-all; }
+.badge-state { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 11px; font-weight: 600; }
+.badge-card[data-earned="true"] .badge-state { border-color: transparent; background: var(--primary); color: var(--primary-text); }
+@media (prefers-reduced-motion: reduce) { .badge-card img { transition: none; } }

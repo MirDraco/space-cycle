@@ -35,6 +35,8 @@ const authApi = window.SpaceCycleAuth = {
         return token;
     },
     refreshFoundSpaces: () => showFoundSpaceCount(auth?.currentUser || null),
+    // Verified place IDs of the signed-in account, or null while unknown/signed out.
+    foundSpaces: null,
 };
 if (authLink) authLink.href = loginHref(window.location.pathname, window.location.search, window.location.hash);
 
@@ -50,6 +52,7 @@ async function showFoundSpaceCount(user) {
     const revision = ++countRevision;
     const session = authRevision;
     const isCurrent = () => revision === countRevision && session === authRevision && auth.currentUser === user;
+    authApi.foundSpaces = null;
     if (!user) {
         renderCount('—', '로그인하면 발견한 공간 수를 확인할 수 있어요.');
         return null;
@@ -65,13 +68,17 @@ async function showFoundSpaceCount(user) {
             cache: 'no-store',
         });
         if (!response.ok) throw new Error('공간 조회 실패');
-        const count = verifiedSpaceCount(await response.json());
+        const data = await response.json();
+        const count = verifiedSpaceCount(data);
         if (!isCurrent()) return null;
         renderCount(String(count), `발견한 공간 ${count}곳`);
-        window.dispatchEvent(new CustomEvent('spacecycle:spaceschange', { detail: { count } }));
+        const foundSpaces = Object.freeze([...data.foundSpaces]);
+        authApi.foundSpaces = foundSpaces;
+        window.dispatchEvent(new CustomEvent('spacecycle:spaceschange', { detail: { count, foundSpaces } }));
         return count;
     } catch {
         if (!isCurrent()) return null;
+        window.dispatchEvent(new CustomEvent('spacecycle:spaceserror'));
         renderCount('—', '발견한 공간 수를 확인하지 못했습니다. 연결을 확인하고 새로고침해 주세요.');
         return null;
     }
@@ -79,6 +86,7 @@ async function showFoundSpaceCount(user) {
 
 function handleAuthState(user) {
     authRevision++;
+    authApi.foundSpaces = null; // never show the previous account's places after a switch
     authApi.isReady = true;
     window.dispatchEvent(new CustomEvent('spacecycle:authchange'));
     if (user && window.location.pathname === '/login') {
@@ -119,6 +127,7 @@ function handleAuthState(user) {
 function handleAuthFailure(error) {
     authRevision++;
     countRevision++;
+    authApi.foundSpaces = null;
     authApi.isReady = false;
     if (loginButton) loginButton.disabled = true;
     if (statusText) {

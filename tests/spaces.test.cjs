@@ -155,7 +155,7 @@ test('home reflects one test place and remaining planned slots', async () => {
     assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, /<a href="\/spaces" class="in-first-btn">공간 보기/);
-    assert.match(html, /<a href="\/badges" class="in-second-btn">내 뱃지 보기/);
+    assert.match(html, /<a href="\/badges" class="in-second-btn">내 배지 보기/);
     assert.match(html, /내부 테스트 공간/);
     assert.match(html, /외부 테스트 공간/);
     assert.match(html, /<dd>1<\/dd>/);
@@ -175,5 +175,5 @@ test('printed short URLs route to a safe destination and the GPS visit page load
     assert.equal(page.status,200);
     const html=await page.text();
     for(const id of ['visit-start','visit-stop','visit-timer','visit-status','visit-distance','visit-accuracy']) assert.ok(html.includes(`id="${id}"`));
-    assert.match(html,/서버/);assert.match(html,/보상/);assert.match(html,/위치/);
+    assert.match(html,/서버/);assert.match(html,/배지/);assert.match(html,/위치/);
 });
