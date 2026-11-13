@@ -112,9 +112,9 @@ test('spaces keeps five slots per category with the indoor test site and five ou
     assert.equal((html.match(/class="slot-status">등록 예정/g) || []).length, 4);
     assert.equal((html.match(/class="slot-status">테스트/g) || []).length, 6);
     for (let n = 1; n <= 5; n++) assert.ok(html.includes(`src="/images/spaces/out0${n}.jpg"`));
-    assert.match(html, /반경 80m/);
     assert.match(html, /향설생활관2/);
-    assert.match(html, /반경 300m/);
+    assert.match(html, /반경 100m/);
+    assert.doesNotMatch(html, /반경 (?:80|300)m/);
     assert.match(html, /1분/);
 });
 
