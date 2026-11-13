@@ -18,7 +18,7 @@ test('stay API uses approved JSON origin and server-only duration, bounded paylo
     const base=`http://127.0.0.1:${server.address().port}/api/stays`;
     const post=(url,body,origin='https://spacecycle.space')=>fetch(base+url,{method:'POST',headers:{'Content-Type':'application/json',Origin:origin,Authorization:'Bearer user-A'},body:JSON.stringify(body)});
     try {
-        const coords={latitude:36.768266,longitude:126.933669,accuracy:5};
+        const coords={latitude:36.767780,longitude:126.933294,accuracy:5};
         const start={spaceId:'indoor-01',...coords};
         assert.equal((await post('',start,'https://evil.example')).status,403);
         assert.equal((await fetch(base,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,403);

@@ -9,7 +9,7 @@ const { createStayProgress } = require('../server/stay-progress.js');
 const { openVisits } = require('../server/visits.js');
 
 const spaceId = 'indoor-01';
-const center = { latitude: 36.768266, longitude: 126.933669, accuracy: 5 };
+const center = { latitude: 36.767780, longitude: 126.933294, accuracy: 5 };
 const startBody = { spaceId, ...center };
 const verifyToken = async token => {
     if (!/^user-[A-Z0-9-]+$/.test(token)) throw Error('invalid_token');
@@ -78,7 +78,7 @@ test('finish returns stable errors without losing time and persists replay-safe 
     t.after(() => visits.close());
     const progress = createStayProgress({ visits, now: () => time });
     const { post } = await api(t, { visits, progress });
-    for (const [body, error] of [[{ ...startBody, latitude: 0, longitude: 0 }, 'outside'], [{ ...startBody, accuracy: 51 }, 'uncertain']]) {
+    for (const [body, error] of [[{ ...startBody, latitude: 0, longitude: 0 }, 'outside'], [{ ...startBody, accuracy: 101 }, 'uncertain']]) {
         const response = await post('', body);
         assert.equal(response.status, 422);
         assert.deepEqual(await response.json(), { error });
@@ -92,7 +92,7 @@ test('finish returns stable errors without losing time and persists replay-safe 
     const outside = await post(`/${start.id}/finish`, { ...body, latitude: 0, longitude: 0 });
     assert.equal(outside.status, 422);
     assert.deepEqual(await outside.json(), { error: 'outside' });
-    const uncertain = await post(`/${start.id}/finish`, { ...body, accuracy: 51 });
+    const uncertain = await post(`/${start.id}/finish`, { ...body, accuracy: 101 });
     assert.equal(uncertain.status, 422);
     assert.deepEqual(await uncertain.json(), { error: 'uncertain' });
     assert.equal((await (await post('/resume', { spaceId })).json()).phase, 'ready');
@@ -191,7 +191,7 @@ test('start resume finish cancel reject all extra fields and invalid numeric coo
     for (const body of [{ spaceId }, { ...startBody, complete: true }, { ...startBody, requiredMs: 1 }, { ...startBody, elapsedMs: 60000 }]) {
         assert.equal((await post('', body)).status, 400);
     }
-    for (const coordinates of [{ latitude: '36.768266' }, { latitude: null }, { latitude: 91 }, { longitude: -181 }, { accuracy: '5' }, { accuracy: -1 }]) {
+    for (const coordinates of [{ latitude: '36.767780' }, { latitude: null }, { latitude: 91 }, { longitude: -181 }, { accuracy: '5' }, { accuracy: -1 }]) {
         const response = await post('', { ...startBody, ...coordinates });
         assert.equal(response.status, 400);
         assert.deepEqual(await response.json(), { error: 'invalid_position' });
@@ -207,7 +207,7 @@ test('start resume finish cancel reject all extra fields and invalid numeric coo
     assert.equal((await post(`/${start.id}/finish`, finish, 'user-B')).status, 403);
     assert.equal((await post(`/${start.id}/cancel`, { challenge: start.challenge, uid: 'user-B' })).status, 400);
     assert.equal((await post(`/${start.id}/cancel`, { challenge: start.challenge }, 'user-B')).status, 403);
-    assert.equal((await post('', { ...startBody, accuracy: 51 })).status, 422);
+    assert.equal((await post('', { ...startBody, accuracy: 101 })).status, 422);
     const ready = await (await post('/resume', { spaceId })).json();
     assert.equal(ready.id, start.id);
     assert.equal(ready.challenge, start.challenge);

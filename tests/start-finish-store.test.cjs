@@ -7,7 +7,7 @@ const { openVisits } = require('../server/visits.js');
 const { getSpace } = require('../public/js/space-data.js');
 
 const spaceId = 'indoor-01';
-const center = { latitude: 36.768266, longitude: 126.933669, accuracy: 5 };
+const center = { latitude: 36.767780, longitude: 126.933294, accuracy: 5 };
 const progressPath = path.join(__dirname, '../server/stay-progress.js');
 function progress(options) {
     assert.ok(fs.existsSync(progressPath), 'durable start/finish progress module must exist');
@@ -78,7 +78,7 @@ test('start requires an enabled server place and a strict inside position before
         rejects(body, 'invalid_payload');
     }
     for (const body of [
-        { ...center, latitude: '36.768266' }, { ...center, latitude: null },
+        { ...center, latitude: '36.767780' }, { ...center, latitude: null },
         { ...center, latitude: NaN }, { ...center, latitude: Infinity },
         { ...center, latitude: 91 }, { ...center, longitude: -181 },
         { ...center, accuracy: -1 }, { ...center, accuracy: 100001 },
@@ -88,7 +88,7 @@ test('start requires an enabled server place and a strict inside position before
         assert.throws(() => store.start(id, center, 'owner'), error => error.message === 'not_configured' && error.status === 404);
     }
     rejects({ ...center, latitude: 0, longitude: 0 }, 'outside', 422);
-    rejects({ ...center, accuracy: 51 }, 'uncertain', 422);
+    rejects({ ...center, accuracy: 101 }, 'uncertain', 422);
     assert.throws(() => store.resume('outdoor-01', 'owner'), error => error.message === 'not_configured' && error.status === 404);
     assert.equal(store.start(spaceId, { longitude: center.longitude, accuracy: 5, latitude: center.latitude }, 'owner').state.phase, 'waiting');
 });
@@ -166,13 +166,13 @@ test('early, missing, wrong-owner, stale, invalid and rejected GPS finishes pres
     for (const body of [null, [], {}, { ...good, now: 1000000 }, { ...good, requiredMs: 1 }, { ...good, uid: 'other' }]) {
         rejects(start.id, body, 'owner', 'invalid_payload');
     }
-    rejects(start.id, { ...good, latitude: '36.768266' }, 'owner', 'invalid_position');
+    rejects(start.id, { ...good, latitude: '36.767780' }, 'owner', 'invalid_position');
     rejects(start.id, good, 'owner', 'too_early', 409);
     time += 59999;
     rejects(start.id, good, 'owner', 'too_early', 409);
     time += 1;
     rejects(start.id, { ...good, latitude: 0, longitude: 0 }, 'owner', 'outside', 422);
-    rejects(start.id, { ...good, accuracy: 51 }, 'owner', 'uncertain', 422);
+    rejects(start.id, { ...good, accuracy: 101 }, 'owner', 'uncertain', 422);
     // No updates during background, GPS timeout or network loss; server time keeps accruing.
     time += 120000;
     assert.equal(store.resume(spaceId, 'owner').phase, 'ready');

@@ -14,10 +14,10 @@ function idle(overrides = {}) {
     return { mode: 'start_finish', phase: 'idle', spaceId: 'indoor-01', requiredMs: 60000,
         locationTimeoutMs: 15000, initialTimeoutMs: 30000, ...overrides };
 }
-function harness({ respond, requiredMs = 60000, wallNow } = {}) {
+function harness({ respond, requiredMs = 60000, wallNow, targetAccuracyM } = {}) {
     let time = 100000, tasks = [], saved = null, startedAt = null;
     const fixes = [], requests = [], states = [];
-    const session = createVisitSession({ spaceId: 'indoor-01', now: () => time, wallNow: wallNow || (() => time),
+    const session = createVisitSession({ spaceId: 'indoor-01', targetAccuracyM, now: () => time, wallNow: wallNow || (() => time),
         geolocation: { getCurrentPosition: (ok, error, options) => fixes.push({ ok, error, options }) },
         schedule: (fn, ms) => { const task = { fn, at: time + ms }; tasks.push(task); return task; },
         unschedule: task => { tasks = tasks.filter(value => value !== task); }, onState: state => states.push(state),

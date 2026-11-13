@@ -8,7 +8,7 @@ const { createStayRouter } = require('../server/stay-routes.js');
 const { createVisitSession } = require('../public/js/visit-session.js');
 
 const spaceId = 'indoor-01';
-const center = { latitude: 36.768266, longitude: 126.933669, accuracy: 5 };
+const center = { latitude: 36.767780, longitude: 126.933294, accuracy: 5 };
 const attemptId = 'c'.repeat(48);
 function deferred() {
     let resolve;

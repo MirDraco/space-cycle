@@ -10,7 +10,7 @@ test('only the authenticated session owner can earn a space; repeat completions 
     const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
     const base=`http://127.0.0.1:${server.address().port}/api/stays`;
     const post=(route,body,token='user-A')=>fetch(base+route,{method:'POST',headers:{Origin:'https://spacecycle.space','Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});
-    const center={latitude:36.768266,longitude:126.933669,accuracy:5};
+    const center={latitude:36.767780,longitude:126.933294,accuracy:5};
     const start={spaceId:'indoor-01',...center};
     try{
         assert.equal((await post('',start,null)).status,401);

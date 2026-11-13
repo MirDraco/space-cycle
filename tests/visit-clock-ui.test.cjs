@@ -159,9 +159,9 @@ test('expired server progress stays restartable after offline/online recovery wi
 test('safe GPS diagnostics show relative ages and latencies only, then clear stale issue on a real recovery', async () => {
     const h = harness(); await flush(); h.elements.get('visit-start').click();
     await h.advance(6200);
-    h.fixes.at(-1).ok({ timestamp: 100900, coords: { latitude: 36.7, longitude: 126.9, accuracy: 5 }, secret: 'PRIVATE' });
+    h.fixes.at(-1).ok({ timestamp: 95900, coords: { latitude: 36.7, longitude: 126.9, accuracy: 5 }, secret: 'PRIVATE' });
     await flush();
-    assert.match(h.elements.get('visit-diagnostics').textContent, /5\.3초/);
+    assert.match(h.elements.get('visit-diagnostics').textContent, /10\.3초/);
     assert.match(h.elements.get('visit-diagnostics').textContent, /6\.2초/);
     assert.match(h.elements.get('visit-build').textContent, /gps_stale/);
     assert.doesNotMatch(h.elements.get('visit-diagnostics').textContent, /36\.7|126\.9|100900|PRIVATE|token/);

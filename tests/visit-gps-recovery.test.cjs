@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { harness, flush } = require('./visit-session.test.cjs');
 
 test('invalid, future, stale and duplicate fixes are never posted; a new timestamp at unchanged coordinates is accepted', async () => {
-    for (const [stamp, code] of [[NaN, 'gps_invalid_timestamp'], [undefined, 'gps_invalid_timestamp'], [105000, 'gps_clock'], [95000, 'gps_stale']]) {
+    for (const [stamp, code] of [[NaN, 'gps_invalid_timestamp'], [undefined, 'gps_invalid_timestamp'], [105000, 'gps_clock'], [89000, 'gps_stale']]) {
         const h = harness(); h.session.start();
         const position = { coords: { latitude: 36.7, longitude: 126.9, accuracy: 5 } };
         if (stamp !== undefined) position.timestamp = stamp;
@@ -23,8 +23,8 @@ test('invalid, future, stale and duplicate fixes are never posted; a new timesta
     assert.equal(h.state.phase, 'complete');
 });
 
-test('start and final freshness boundaries reject all non-finite timestamps and accept only the bounded -1000..4000ms ages', async () => {
-    for (const [age, code] of [[4000, null], [-1000, null], [4001, 'gps_stale'], [-1001, 'gps_clock']]) {
+test('start and final freshness boundaries reject all non-finite timestamps and accept only the bounded -3000..10000ms ages', async () => {
+    for (const [age, code] of [[10000, null], [-3000, null], [10001, 'gps_stale'], [-3001, 'gps_clock']]) {
         const h = harness(); h.session.start(); h.fix(h.fixes[0], h.time - age); await flush();
         assert.equal(h.requests.length, code ? 0 : 1);
         assert.equal(h.state.locationIssue?.code || null, code);
@@ -76,7 +76,7 @@ test('safe local diagnostics are immutable copies and retries never extend a sta
     for (const final of [false, true]) {
         const h = harness(); h.session.start();
         if (final) { h.fix(); await flush(); await h.advance(60000); h.session.finish(); }
-        h.fix(h.fixes.at(-1), h.time - 5000); await flush();
+        h.fix(h.fixes.at(-1), h.time - 11000); await flush();
         assert.equal(h.state.locationIssue.code, 'gps_stale');
         h.state.locationIssue.code = 'PRIVATE';
         assert.equal(h.session.getState().locationIssue.code, 'gps_stale', 'listeners cannot mutate stored diagnostic state');

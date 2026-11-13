@@ -14,7 +14,9 @@ test('Firebase verifier accepts only signed, current Google tokens for this proj
     const claims={sub:'user-A',aud:'space-cycle-1b705',iss:'https://securetoken.google.com/space-cycle-1b705',iat:1799999990,exp:1800003600,auth_time:1799999900,firebase:{sign_in_provider:'google.com'}};
     const sign=payload=>new SignJWT(payload).setProtectedHeader({alg:'RS256',kid:'test-key'}).sign(privateKey);
     assert.equal((await verify(await sign(claims))).uid,'user-A');
-    for(const patch of [{aud:'other-project'},{iss:'https://evil.example'}, {exp:1799999999},{iat:1800000001},{auth_time:1800000001},{sub:''},{sub:'x'.repeat(129)},{firebase:{sign_in_provider:'anonymous'}},{exp:undefined},{iat:undefined}]){
+    // Up to 60s of host clock skew is tolerated so fresh tokens are not rejected.
+    assert.equal((await verify(await sign({...claims,iat:1800000030,auth_time:1800000030}))).uid,'user-A');
+    for(const patch of [{aud:'other-project'},{iss:'https://evil.example'}, {exp:1799999939},{iat:1800000061},{auth_time:1800000061},{sub:''},{sub:'x'.repeat(129)},{firebase:{sign_in_provider:'anonymous'}},{exp:undefined},{iat:undefined}]){
         await assert.rejects(verify(await sign({...claims,...patch})),/invalid_token/);
     }
     const forged=(await sign(claims)).split('.');forged[1]=Buffer.from(JSON.stringify({...claims,sub:'user-B'})).toString('base64url');

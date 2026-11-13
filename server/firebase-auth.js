@@ -8,6 +8,9 @@ function authError(code, status = 401) {
     error.status = status;
     return error;
 }
+// Small clock skew between this host (e.g. a Docker VM that drifted during laptop sleep)
+// and Google must not turn a freshly issued token into a "login expired" error.
+const CLOCK_SKEW_S = 60;
 function createFirebaseVerifier({ keySet: keys = keySet, now = () => Date.now() / 1000 } = {}) {
     return async token => {
         if (typeof token !== 'string' || token.length > 16384 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) throw authError('invalid_token');
@@ -16,11 +19,11 @@ function createFirebaseVerifier({ keySet: keys = keySet, now = () => Date.now() 
             const { payload } = await jwtVerify(token, keys, {
                 issuer: `https://securetoken.google.com/${PROJECT_ID}`, audience: PROJECT_ID,
                 algorithms: ['RS256'], requiredClaims: ['sub', 'iat', 'exp', 'auth_time'],
-                currentDate: new Date(time * 1000), clockTolerance: 0,
+                currentDate: new Date(time * 1000), clockTolerance: CLOCK_SKEW_S,
             });
             if (typeof payload.sub !== 'string' || !payload.sub || payload.sub.length > 128 ||
-                !Number.isFinite(payload.iat) || payload.iat > time ||
-                !Number.isFinite(payload.auth_time) || payload.auth_time > time ||
+                !Number.isFinite(payload.iat) || payload.iat > time + CLOCK_SKEW_S ||
+                !Number.isFinite(payload.auth_time) || payload.auth_time > time + CLOCK_SKEW_S ||
                 payload.firebase?.sign_in_provider !== 'google.com') throw authError('invalid_token');
             return Object.freeze({ uid: payload.sub });
         } catch {

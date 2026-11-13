@@ -10,7 +10,7 @@ function setup() {
     let time = 0;
     const store = createStayStore({ now: () => time });
     const advance = ms => { time += ms; };
-    const center = { latitude: 36.768266, longitude: 126.933669, accuracy: 5 };
+    const center = { latitude: 36.767780, longitude: 126.933294, accuracy: 5 };
     return { store, advance, center, assessPosition };
 }
 
@@ -18,8 +18,8 @@ test('exact supplied coordinates, requested 300m and 60s are enforced by server 
     const { store, advance, center } = setup();
     let s = store.create('indoor-01');
     assert.equal(s.space.name, '향설생활관2');
-    assert.equal(s.space.latitude, 36.768266);
-    assert.equal(s.space.longitude, 126.933669);
+    assert.equal(s.space.latitude, 36.767780);
+    assert.equal(s.space.longitude, 126.933294);
     assert.equal(s.space.radiusM, 300);
     assert.equal(s.requiredMs, 60000);
     s = store.sample(s.id, { challenge: s.challenge, ...center });
@@ -43,7 +43,7 @@ test('outside, uncertain accuracy and interrupted samples reset continuous time'
     s=store.sample(s.id,{challenge:s.challenge,...center,latitude:center.latitude+0.004});
     assert.equal(s.phase,'outside');assert.equal(s.elapsedMs,0);
     advance(5000);s=store.sample(s.id,{challenge:s.challenge,...center});assert.equal(s.elapsedMs,0);
-    advance(5000);s=store.sample(s.id,{challenge:s.challenge,...center,accuracy:80});
+    advance(5000);s=store.sample(s.id,{challenge:s.challenge,...center,accuracy:120});
     assert.equal(s.phase,'uncertain');assert.equal(s.elapsedMs,0);
     s=store.sample(s.id,{challenge:s.challenge,...center});
     advance(25001);s=store.sample(s.id,{challenge:s.challenge,...center});
@@ -59,7 +59,7 @@ test('accuracy circle must fit inside the radius; invalid numeric positions neve
     assert.equal(assessPosition(location,atMeters(250,40)).phase,'inside');
     assert.equal(assessPosition(location,atMeters(280,30)).phase,'uncertain');
     assert.equal(assessPosition(location,atMeters(310,5)).phase,'outside');
-    assert.equal(assessPosition(location,atMeters(60,80)).phase,'uncertain','radius change must not weaken the separate accuracy limit');
+    assert.equal(assessPosition(location,atMeters(60,120)).phase,'uncertain','radius change must not weaken the separate accuracy limit');
     assert.equal(assessPosition(location,{...center,latitude:center.latitude+0.0025,accuracy:30}).phase,'uncertain');
     for(const value of [NaN,Infinity,'36.7',null]) assert.throws(()=>assessPosition(location,{...center,latitude:value}));
     assert.throws(()=>assessPosition(location,{...center,accuracy:-1}));

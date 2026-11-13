@@ -25,7 +25,7 @@
     const visible = () => !document.hidden;
     const release = document.querySelector('meta[name="spacecycle-release"]')?.content || 'unknown';
     const locationCodes = new Set(['gps_stale', 'gps_duplicate', 'gps_clock', 'gps_invalid_timestamp',
-        'gps_timeout', 'gps_denied', 'gps_unavailable']);
+        'gps_timeout', 'gps_denied', 'gps_unavailable', 'gps_coarse']);
     const refreshed = new Set();
     let session = null, runOwner = null, observedUser = null, uiGeneration = 0;
     let latest = null, paintTimer = null;
@@ -117,6 +117,7 @@
         if (!session) {
             const run = ++uiGeneration; runOwner = currentUser;
             session = engine.createVisitSession({ spaceId: place.id, geolocation: navigator.geolocation, request,
+                targetAccuracyM: place.maxAccuracyM,
                 onState: state => receive(state, currentUser, run) });
             if (visible() && online()) void session.restore();
         } else paint();

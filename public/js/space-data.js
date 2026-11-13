@@ -17,11 +17,11 @@
                 ...(category === 'indoor' && n === 1 ? {
                     name: '향설생활관2',
                     enabled: true,
-                    latitude: 36.768266,
-                    longitude: 126.933669,
+                    latitude: 36.767780,
+                    longitude: 126.933294,
                     radiusM: 300,
                     requiredMs: 60000,
-                    maxAccuracyM: 50,
+                    maxAccuracyM: 100,
                 } : {}),
             }));
         }

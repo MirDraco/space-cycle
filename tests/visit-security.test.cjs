@@ -8,7 +8,7 @@ const express = require('express');
 const { createStayProgress } = require('../server/stay-progress.js');
 const { createStayRouter } = require('../server/stay-routes.js');
 const { openVisits } = require('../server/visits.js');
-const center = { latitude: 36.768266, longitude: 126.933669, accuracy: 5 };
+const center = { latitude: 36.767780, longitude: 126.933294, accuracy: 5 };
 
 test('failed persistence never claims success; the same stable finish safely retries without double counting', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'visit-security-'));

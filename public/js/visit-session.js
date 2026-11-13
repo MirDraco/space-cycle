@@ -38,8 +38,11 @@
         gps_duplicate: '이전과 같은 측정 시각은 보내지 않고 새 위치를 다시 확인해요.',
         gps_clock: '위치 측정 시각이 기기 시각과 맞지 않아 다시 확인해요.',
         gps_invalid_timestamp: '위치 측정 시각이 없어 다시 확인해요.',
+        gps_coarse: '위치 정확도를 높이는 중이에요. 창가나 건물 입구 쪽에서 잠시 기다려주세요.',
     });
-    function createVisitSession({ spaceId, geolocation, request, onState,
+    // Fix age limits. Some phones (notably iOS) report fixes a few seconds old even with maximumAge: 0.
+    const MAX_FIX_AGE_MS = 10000, MAX_FUTURE_FIX_MS = 3000;
+    function createVisitSession({ spaceId, geolocation, request, onState, targetAccuracyM = Infinity,
         now = () => performance.now(), wallNow = () => Date.now(),
         createAttemptId = () => {
             const bytes = new Uint8Array(24); globalThis.crypto.getRandomValues(bytes);
@@ -52,6 +55,9 @@
         let locationIssue = null, locationSample = null, locationPending = false;
         let acquisitionDeadline = 0, suspended = false, createUncertain = false, cancelling = false;
         let attemptId = null, abandonPending = false;
+        // Best (lowest accuracy radius) valid fix seen in the current acquisition. The first fix
+        // on a phone is often a coarse Wi-Fi/cell estimate that improves over a few seconds.
+        let bestFix = null;
         const timers = new Set();
         function later(fn, milliseconds) {
             const timer = schedule(() => { timers.delete(timer); fn(); }, milliseconds);
@@ -152,7 +158,7 @@
         }
         async function submit(run, position) {
             if (!current(run)) return;
-            lastFixTimestamp = position.timestamp;
+            lastFixTimestamp = Math.max(lastFixTimestamp, position.timestamp);
             const { latitude, longitude, accuracy } = position.coords;
             createUncertain = true;
             emit('requesting', '시작 위치를 서버에서 확인하고 있어요.');
@@ -178,8 +184,14 @@
         }
         function locate(run, submitPosition) {
             if (!current(run) || !busy) return;
+            // Out of time: send the best fix we have (the server decides) instead of failing outright.
+            const useBest = () => {
+                if (!bestFix) return false;
+                const chosen = bestFix; bestFix = null; locationPending = false; locationIssue = null;
+                void submitPosition(chosen); return true;
+            };
             const available = acquisitionDeadline - now();
-            if (available <= 0) { failRequest({ code: 'location_timeout' }); return; }
+            if (available <= 0) { if (!useBest()) failRequest({ code: 'location_timeout' }); return; }
             const requestedAt = now(), timeout = Math.min(15000, available);
             let settled = false, watchdog;
             locationPending = true;
@@ -190,7 +202,7 @@
             function retry(code) {
                 if (!current(run)) return;
                 locationIssue = { code, ...locationSample };
-                if (now() >= acquisitionDeadline) { failRequest({ code: 'location_timeout' }); return; }
+                if (now() >= acquisitionDeadline) { if (!useBest()) failRequest({ code: 'location_timeout' }); return; }
                 emit(snapshot?.phase || 'locating', `${messages[code]} (${code})`);
                 later(() => locate(run, submitPosition), Math.min(250, acquisitionDeadline - now()));
             }
@@ -204,20 +216,25 @@
             try {
                 geolocation.getCurrentPosition(position => {
                     if (!settle()) return;
-                    if (now() >= acquisitionDeadline) { failRequest({ code: 'location_timeout' }); return; }
+                    if (now() >= acquisitionDeadline) { if (!useBest()) failRequest({ code: 'location_timeout' }); return; }
                     const timestamp = position?.timestamp, age = wallNow() - timestamp;
                     locationSample = { requestMs: Math.max(0, Math.round(now() - requestedAt)),
                         fixAgeMs: Number.isFinite(timestamp) && Number.isFinite(age) ? Math.round(age) : null };
-                    const code = !Number.isFinite(timestamp) ? 'gps_invalid_timestamp' : !Number.isFinite(age) || age < -1000 ? 'gps_clock'
-                        : age > 4000 ? 'gps_stale' : timestamp <= lastFixTimestamp ? 'gps_duplicate' : null;
+                    const code = !Number.isFinite(timestamp) ? 'gps_invalid_timestamp' : !Number.isFinite(age) || age < -MAX_FUTURE_FIX_MS ? 'gps_clock'
+                        : age > MAX_FIX_AGE_MS ? 'gps_stale' : timestamp <= lastFixTimestamp ? 'gps_duplicate' : null;
                     if (code) { retry(code); return; }
                     const coords = position?.coords;
                     if (!coords || !['latitude', 'longitude', 'accuracy'].every(key => Number.isFinite(coords[key])) ||
                         Math.abs(coords.latitude) > 90 || Math.abs(coords.longitude) > 180 || coords.accuracy < 0) {
                         failRequest({ code: 'invalid_position' }); return;
                     }
-                    lastFixTimestamp = timestamp; locationPending = false; locationIssue = null;
-                    void submitPosition(position);
+                    lastFixTimestamp = timestamp;
+                    if (!bestFix || coords.accuracy < bestFix.coords.accuracy) bestFix = position;
+                    // Coarse fix with time left: keep measuring; a later fix is usually more precise.
+                    if (coords.accuracy > targetAccuracyM && acquisitionDeadline - now() > 1000) { retry('gps_coarse'); return; }
+                    const chosen = bestFix; bestFix = null;
+                    locationPending = false; locationIssue = null;
+                    void submitPosition(chosen);
                 }, failed, { enableHighAccuracy: true, maximumAge: 0, timeout });
             } catch { failed({ code: 2 }); }
         }
@@ -232,17 +249,17 @@
             } catch { failRequest({ code: 'server_error' }); return; }
             const run = ++generation; active = busy = true; snapshot = null; confirmedAt = null;
             suspended = false; errorCode = null; locationIssue = locationSample = null;
-            controller = new AbortController(); acquisitionDeadline = now() + 30000;
+            controller = new AbortController(); acquisitionDeadline = now() + 30000; bestFix = null;
             emit('locating', '버튼을 눌러 시작한 위치 확인이에요. 위치 권한을 허용해주세요.');
             locate(run, position => submit(run, position));
         }
         function finish() {
             if (!snapshot || busy || !active) return;
-            const run = ++generation; busy = true; controller = new AbortController(); acquisitionDeadline = now() + 30000;
+            const run = ++generation; busy = true; controller = new AbortController(); acquisitionDeadline = now() + 30000; bestFix = null;
             emit(snapshot.phase, '마지막 위치를 확인하고 있어요.');
             locate(run, async position => {
                 if (!current(run)) return;
-                lastFixTimestamp = position.timestamp;
+                lastFixTimestamp = Math.max(lastFixTimestamp, position.timestamp);
                 const { latitude, longitude, accuracy } = position.coords;
                 try {
                     const next = await send(`/api/stays/${snapshot.id}/finish`, {
