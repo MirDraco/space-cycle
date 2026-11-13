@@ -68,7 +68,7 @@ test('accuracy circle must fit inside the radius; invalid numeric positions neve
 
 test('unconfigured spaces, client time fields, replayed challenges and cancelled sessions fail closed', () => {
     const {store,center}=setup();
-    assert.throws(()=>store.create('outdoor-01'),/not_configured/);
+    assert.throws(()=>store.create('indoor-02'),/not_configured/);
     assert.throws(()=>store.create('bogus'),/not_configured/);
     const s=store.create('indoor-01');
     assert.throws(()=>store.sample(s.id,{challenge:s.challenge,...center,elapsedMs:60000}),/invalid_payload/);

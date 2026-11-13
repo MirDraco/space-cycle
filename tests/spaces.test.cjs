@@ -93,7 +93,7 @@ test('all mobile pages share four navigation items and a header theme control', 
     }
 });
 
-test('spaces keeps five slots per category with only the supplied indoor test site configured', async () => {
+test('spaces keeps five slots per category with the indoor test site and five outdoor places configured', async () => {
     const response = await fetch(`${base}/spaces`);
     assert.equal(response.status, 200);
     const html = await response.text();
@@ -109,21 +109,25 @@ test('spaces keeps five slots per category with only the supplied indoor test si
     const ids = [...html.matchAll(/data-space-slot="([^"]+)"/g)].map(m => m[1]);
     assert.equal(ids.length, 10);
     assert.equal(new Set(ids).size, 10);
-    assert.equal((html.match(/class="slot-status">등록 예정/g) || []).length, 9);
+    assert.equal((html.match(/class="slot-status">등록 예정/g) || []).length, 4);
+    assert.equal((html.match(/class="slot-status">테스트/g) || []).length, 6);
+    for (let n = 1; n <= 5; n++) assert.ok(html.includes(`src="/images/spaces/out0${n}.jpg"`));
+    assert.match(html, /반경 80m/);
     assert.match(html, /향설생활관2/);
     assert.match(html, /반경 300m/);
     assert.match(html, /1분/);
 });
 
-test('all ten pending spaces expand to honest photo/features and a selected QR entry', async () => {
+test('all ten spaces expand to a photo or honest placeholder, features and a selected QR entry', async () => {
     const html = await (await fetch(`${base}/spaces`)).text();
     const details = [...html.matchAll(/<details\b[^>]*data-space-slot="([^"]+)"[\s\S]*?<\/details>/g)];
     assert.equal(details.length, 10, 'every slot must be an expandable disclosure');
     for (const [markup, id] of details) {
         assert.match(markup, /<summary\b/);
-        assert.match(markup, /공간 사진 준비 중/);
+        if (id.startsWith('outdoor-')) assert.match(markup, /class="slot-photo"><img src="\/images\/spaces\/out0\d\.jpg" alt="[^"]+"/);
+        else assert.match(markup, /공간 사진 준비 중/);
         assert.match(markup, /공간 특징/);
-        if (id !== 'indoor-01') assert.match(markup, /장소 선정 후/);
+        if (id.startsWith('indoor-') && id !== 'indoor-01') assert.match(markup, /장소 선정 후/);
         assert.ok(markup.includes(`href="/qr?space=${id}"`));
         assert.match(markup, /QR 찍으러 가기/);
     }
@@ -153,7 +157,7 @@ test('home reflects one test place and remaining planned slots', async () => {
     assert.match(html, /<a href="\/spaces" class="in-first-btn">공간 보기/);
     assert.match(html, /<a href="\/badges" class="in-second-btn">내 뱃지 보기/);
     assert.match(html, /내부 테스트 공간/);
-    assert.match(html, /외부 등록 예정/);
+    assert.match(html, /외부 테스트 공간/);
     assert.match(html, /<dd>1<\/dd>/);
     assert.match(html, /<dd>5<\/dd>/);
     assert.doesNotMatch(html, /12\+|8\+|>User</);
@@ -164,7 +168,7 @@ test('printed short URLs route to a safe destination and the GPS visit page load
         const code=`${prefix}0${n}`, id=`${prefix==='in'?'indoor':'outdoor'}-0${n}`;
         const response=await fetch(`${base}/s/${code}`,{redirect:'manual'});
         assert.equal(response.status,302);
-        assert.equal(response.headers.get('location'),`${id==='indoor-01'?'/visit':'/spaces'}?space=${id}`);
+        assert.equal(response.headers.get('location'),`${['indoor-01','outdoor-01','outdoor-02','outdoor-03','outdoor-04','outdoor-05'].includes(id)?'/visit':'/spaces'}?space=${id}`);
     }
     for(const suffix of ['in06','IN01','in01?extra=1','in01/']) assert.equal((await fetch(`${base}/s/${suffix}`,{redirect:'manual'})).status,404);
     const page=await fetch(`${base}/visit?space=indoor-01`);

@@ -15,7 +15,7 @@ test('found places persist per account and UNIQUE user/place prevents duplicate 
         assert.deepEqual(store.list('user-A'),{foundSpaces:['indoor-01'],foundSpaceCount:1});
         assert.deepEqual(store.list('user-B'),{foundSpaces:[],foundSpaceCount:0});
         assert.equal(store.record('user-B','indoor-01').newlyFound,true);
-        assert.throws(()=>store.record('user-A','outdoor-01'),/not_configured/);
+        assert.throws(()=>store.record('user-A','indoor-02'),/not_configured/);
         assert.throws(()=>store.record('user-A','bogus'),/not_configured/);
         assert.throws(()=>store.record('','indoor-01'),/invalid_user/);
         store.close();store=openVisits(filename);

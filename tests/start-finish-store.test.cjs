@@ -84,12 +84,12 @@ test('start requires an enabled server place and a strict inside position before
         { ...center, accuracy: -1 }, { ...center, accuracy: 100001 },
         { ...center, accuracy: '5' },
     ]) rejects(body, 'invalid_position');
-    for (const id of ['outdoor-01', 'missing']) {
+    for (const id of ['indoor-02', 'missing']) {
         assert.throws(() => store.start(id, center, 'owner'), error => error.message === 'not_configured' && error.status === 404);
     }
     rejects({ ...center, latitude: 0, longitude: 0 }, 'outside', 422);
     rejects({ ...center, accuracy: 101 }, 'uncertain', 422);
-    assert.throws(() => store.resume('outdoor-01', 'owner'), error => error.message === 'not_configured' && error.status === 404);
+    assert.throws(() => store.resume('indoor-02', 'owner'), error => error.message === 'not_configured' && error.status === 404);
     assert.equal(store.start(spaceId, { longitude: center.longitude, accuracy: 5, latitude: center.latitude }, 'owner').state.phase, 'waiting');
 });
 

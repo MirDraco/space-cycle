@@ -12,7 +12,7 @@ test('printed short QR codes map safely, with in01 leading to the test visit pag
         const id=`${prefix==='in'?'indoor':'outdoor'}-0${n}`;
         const result=policy.interpretQr(`https://spacecycle.space/s/${code}`,null,'http://127.0.0.1:4500');
         assert.equal(result.status,'matched');assert.equal(result.spaceId,id);
-        assert.equal(result.path,`${id==='indoor-01'?'/visit':'/spaces'}?space=${id}`);
+        assert.equal(result.path,`${['indoor-01','outdoor-01','outdoor-02','outdoor-03','outdoor-04','outdoor-05'].includes(id)?'/visit':'/spaces'}?space=${id}`);
     }
     for(const suffix of ['/in01?extra=1','/in01#x','/in06','/IN01','/%69n01','/../s/in01','/in01/']) {
         assert.equal(policy.interpretQr('https://spacecycle.space/s'+suffix,null,'http://127.0.0.1:4500').status,'invalid');
@@ -31,13 +31,14 @@ test('QR policy accepts only known Space Cycle space links and checks selected s
         assert.equal(readSelection(query).valid, false, query);
     }
     assert.equal(spaceLabel('indoor-01'), '향설생활관2');
-    assert.equal(spaceLabel('outdoor-05'), '외부 공간 05');
+    assert.equal(spaceLabel('outdoor-05'), '대운동장 정면 길');
+    assert.equal(spaceLabel('indoor-05'), '내부 공간 05');
     assert.equal(spaceLabel('indoor-99'), null);
     for (const id of ['indoor-01', 'outdoor-05']) {
         const result = interpretQr(`https://spacecycle.space/spaces?space=${id}`, id, origin);
         assert.equal(result.status, 'matched');
         assert.equal(result.spaceId, id);
-        assert.equal(result.path, `${id === 'indoor-01' ? '/visit' : '/spaces'}?space=${id}`);
+        assert.equal(result.path, `${id.startsWith('indoor-') && id !== 'indoor-01' ? '/spaces' : '/visit'}?space=${id}`);
     }
     assert.equal(interpretQr(`${origin}/spaces?space=indoor-02`, null, origin).status, 'matched');
     assert.equal(interpretQr('https://spacecycle.space/spaces?space=outdoor-01', 'indoor-01', origin).status, 'mismatch');

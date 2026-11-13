@@ -23,7 +23,7 @@ test('stay API uses approved JSON origin and server-only duration, bounded paylo
         assert.equal((await post('',start,'https://evil.example')).status,403);
         assert.equal((await fetch(base,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,403);
         assert.equal((await post('',{...start,requiredMs:1})).status,400);
-        assert.equal((await post('',{...start,spaceId:'outdoor-01'})).status,404);
+        assert.equal((await post('',{...start,spaceId:'indoor-02'})).status,404);
         const created=await post('',start);
         assert.equal(created.status,201);assert.equal(created.headers.get('cache-control'),'no-store');
         let s=await created.json();const id=s.id;
