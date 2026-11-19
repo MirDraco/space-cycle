@@ -20,8 +20,8 @@
         start_cancelled: '취소한 시작 요청이에요. 새로 시작해주세요.',
         invalid_payload: '화면과 서버 버전이 맞지 않아요. 최신 화면을 다시 불러와주세요.',
         invalid_position: '위치 정보를 확인할 수 없어요. 새 위치로 다시 확인해주세요.',
-        outside: '허용 반경 밖이에요. 범위 안에서 다시 확인해주세요.',
-        uncertain: '위치 정확도가 부족해요. 신호가 잘 잡히는 안전한 곳에서 다시 확인해주세요.',
+        outside: '휴대폰이 측정한 위치가 허용 반경 밖이에요. 맞는 공간의 QR인지 확인하고, 공간 가까이에서 다시 확인해주세요.',
+        uncertain: '위치 정확도가 부족해요. 정확한 위치 사용이 켜져 있는지 확인하고, 공간 안에서 신호가 잘 잡히는 쪽으로 이동해 다시 확인해주세요.',
         too_early: '서버 기준 대기 시간이 아직 남아 있어요. 잠시 후 마지막 위치를 다시 확인해주세요.',
         save_failed: '완료 기록이 저장되지 않았어요. 잠시 후 다시 확인해주세요.',
         auth_unavailable: '인증 서버에 일시적으로 연결할 수 없어요. 잠시 후 다시 확인해주세요.',
@@ -35,7 +35,7 @@
         gps_timeout: '위치 응답이 늦어요. 다시 확인해주세요.',
         location_timeout: '30초 동안 새 위치를 확인하지 못했어요. 다시 확인해주세요.',
         gps_stale: '오래된 측정값은 보내지 않고 새 위치를 다시 확인해요.',
-        gps_duplicate: '이전과 같은 측정 시각은 보내지 않고 새 위치를 다시 확인해요.',
+        gps_duplicate: '휴대폰이 같은 위치 측정값을 다시 보내고 있어요. 새 측정값을 기다리는 중이에요.',
         gps_clock: '위치 측정 시각이 기기 시각과 맞지 않아 다시 확인해요.',
         gps_invalid_timestamp: '위치 측정 시각이 없어 다시 확인해요.',
         gps_coarse: '위치 정확도를 높이는 중이에요. 창가나 건물 입구 쪽에서 잠시 기다려주세요.',
@@ -51,7 +51,8 @@
         schedule = (fn, ms) => setTimeout(fn, ms), unschedule = id => clearTimeout(id) }) {
         let generation = 0, active = false, snapshot = null, controller = null;
         let confirmedAt = null, phase = 'idle', message = '', busy = false, requiredMs = 60000;
-        let lastFixTimestamp = -Infinity, errorCode = null;
+        let startFixTimestamp = -Infinity, errorCode = null;
+        let rejectedPosition = null;
         let locationIssue = null, locationSample = null, locationPending = false;
         let acquisitionDeadline = 0, suspended = false, createUncertain = false, cancelling = false;
         let attemptId = null, abandonPending = false;
@@ -110,13 +111,14 @@
             return next;
         }
         function getState() {
+            const position = rejectedPosition || snapshot;
             return { mode: 'start_finish', phase, message, active, busy, errorCode, locationPending, suspended, cancelling,
                 locationIssue: locationIssue && { ...locationIssue }, locationSample: locationSample && { ...locationSample },
                 id: snapshot?.id, elapsedMs: snapshot?.elapsedMs ?? 0, requiredMs,
                 confirmedAt, expiresInMs: snapshot?.expiresInMs ?? null,
                 persisted: snapshot?.persisted === true, newlyFound: snapshot?.newlyFound === true,
                 foundSpaceCount: snapshot?.foundSpaceCount,
-                distanceM: snapshot?.distanceM ?? null, accuracyM: snapshot?.accuracyM ?? null,
+                distanceM: position?.distanceM ?? null, accuracyM: position?.accuracyM ?? null,
                 locationTimeoutMs: 15000, initialTimeoutMs: 30000 };
         }
         function emit(nextPhase, nextMessage) { phase = nextPhase; message = nextMessage; onState(getState()); }
@@ -124,6 +126,7 @@
         function failRequest(error) {
             clearTimers(); locationPending = false;
             errorCode = Object.hasOwn(messages, error?.code) ? error.code : 'server_error';
+            rejectedPosition = ['outside', 'uncertain'].includes(errorCode) ? error.positionMetrics || {} : null;
             busy = false; cancelling = false;
             if (['session_missing', 'expired'].includes(errorCode)) { snapshot = null; confirmedAt = null; }
             active = createUncertain || abandonPending || (Boolean(snapshot) && snapshot.phase !== 'complete');
@@ -135,13 +138,14 @@
                 emit('error', `시작 요청 상태 확인필요. ${messages[errorCode]} 진행 또는 취소를 다시 확인해주세요. (${errorCode})`);
                 return;
             }
-            emit(snapshot?.phase || 'error', `${messages[errorCode]}${active ? ' 기다린 진행은 유지해요.' : ''} (${errorCode})`);
+            const suffix = rejectedPosition ? '' : ` (${errorCode})`;
+            emit(snapshot?.phase || 'error', `${messages[errorCode]}${active ? ' 기다린 진행은 유지해요.' : ''}${suffix}`);
         }
         function accept(next, allowIdle = false) {
             validate(next, allowIdle);
             // A read overtaking the original start is not evidence that it cannot commit later.
             if (next.phase === 'idle' && createUncertain) { failRequest({ code: 'network_error' }); return; }
-            errorCode = null; cancelling = false;
+            errorCode = null; rejectedPosition = null; cancelling = false;
             if (next.phase === 'complete' && !next.persisted) {
                 busy = false; active = Boolean(snapshot); errorCode = 'save_failed';
                 emit(snapshot?.phase || 'error', '완료 기록이 저장되지 않았어요. 진행은 유지해요. 잠시 후 다시 확인해주세요. (save_failed)');
@@ -158,7 +162,7 @@
         }
         async function submit(run, position) {
             if (!current(run)) return;
-            lastFixTimestamp = Math.max(lastFixTimestamp, position.timestamp);
+            startFixTimestamp = position.timestamp;
             const { latitude, longitude, accuracy } = position.coords;
             createUncertain = true;
             emit('requesting', '시작 위치를 서버에서 확인하고 있어요.');
@@ -182,7 +186,9 @@
                 }
             }
         }
-        function locate(run, submitPosition) {
+        // Track repeated fixes within this acquisition, not across independent retry clicks.
+        // The finish check can still exclude the position submitted at the start.
+        function locate(run, submitPosition, lastFixTimestamp = -Infinity) {
             if (!current(run) || !busy) return;
             // Out of time: send the best fix we have (the server decides) instead of failing outright.
             const useBest = () => {
@@ -199,12 +205,12 @@
                 if (settled || !current(run) || !busy) return false;
                 settled = true; clearTimer(watchdog); return true;
             };
-            function retry(code) {
+            function retry(code, seenTimestamp = lastFixTimestamp) {
                 if (!current(run)) return;
                 locationIssue = { code, ...locationSample };
                 if (now() >= acquisitionDeadline) { if (!useBest()) failRequest({ code: 'location_timeout' }); return; }
-                emit(snapshot?.phase || 'locating', `${messages[code]} (${code})`);
-                later(() => locate(run, submitPosition), Math.min(250, acquisitionDeadline - now()));
+                emit(snapshot?.phase || 'locating', messages[code]);
+                later(() => locate(run, submitPosition, seenTimestamp), Math.min(250, acquisitionDeadline - now()));
             }
             function failed(error) {
                 if (!settle()) return;
@@ -228,10 +234,9 @@
                         Math.abs(coords.latitude) > 90 || Math.abs(coords.longitude) > 180 || coords.accuracy < 0) {
                         failRequest({ code: 'invalid_position' }); return;
                     }
-                    lastFixTimestamp = timestamp;
                     if (!bestFix || coords.accuracy < bestFix.coords.accuracy) bestFix = position;
                     // Coarse fix with time left: keep measuring; a later fix is usually more precise.
-                    if (coords.accuracy > targetAccuracyM && acquisitionDeadline - now() > 1000) { retry('gps_coarse'); return; }
+                    if (coords.accuracy > targetAccuracyM && acquisitionDeadline - now() > 1000) { retry('gps_coarse', timestamp); return; }
                     const chosen = bestFix; bestFix = null;
                     locationPending = false; locationIssue = null;
                     void submitPosition(chosen);
@@ -249,6 +254,8 @@
             } catch { failRequest({ code: 'server_error' }); return; }
             const run = ++generation; active = busy = true; snapshot = null; confirmedAt = null;
             suspended = false; errorCode = null; locationIssue = locationSample = null;
+            rejectedPosition = null;
+            startFixTimestamp = -Infinity;
             controller = new AbortController(); acquisitionDeadline = now() + 30000; bestFix = null;
             emit('locating', '버튼을 눌러 시작한 위치 확인이에요. 위치 권한을 허용해주세요.');
             locate(run, position => submit(run, position));
@@ -256,10 +263,10 @@
         function finish() {
             if (!snapshot || busy || !active) return;
             const run = ++generation; busy = true; controller = new AbortController(); acquisitionDeadline = now() + 30000; bestFix = null;
+            errorCode = null; rejectedPosition = null; locationIssue = locationSample = null;
             emit(snapshot.phase, '마지막 위치를 확인하고 있어요.');
             locate(run, async position => {
                 if (!current(run)) return;
-                lastFixTimestamp = Math.max(lastFixTimestamp, position.timestamp);
                 const { latitude, longitude, accuracy } = position.coords;
                 try {
                     const next = await send(`/api/stays/${snapshot.id}/finish`, {
@@ -274,7 +281,7 @@
                 } catch (error) {
                     if (current(run)) failRequest(error);
                 }
-            });
+            }, startFixTimestamp);
         }
         async function restore() {
             if (busy) return;
@@ -300,6 +307,7 @@
             controller = new AbortController(); busy = true;
             function cleared() {
                 snapshot = null; confirmedAt = null; active = busy = false; errorCode = null;
+                rejectedPosition = null;
                 createUncertain = cancelling = abandonPending = false; attemptId = null;
                 emit('stopped', '진행을 취소했어요. 이미 저장한 방문 기록은 유지돼요.');
             }

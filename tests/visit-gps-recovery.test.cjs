@@ -1,6 +1,28 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { harness, flush } = require('./visit-session.test.cjs');
+const { harness, snapshot, flush } = require('./visit-session.test.cjs');
+
+test('a new button press rechecks a still-fresh fix rejected as outside on the previous press', async () => {
+    for (const final of [false, true]) {
+        const h = harness({ respond: call => {
+            if (final && call.route === '/api/stays') return snapshot();
+            throw { code: 'outside', status: 422 };
+        } });
+        h.session.start();
+        if (final) { h.fix(); await flush(); await h.advance(60000); h.session.finish(); }
+        const timestamp = h.time;
+        h.fix(); await flush();
+        assert.equal(h.state.errorCode, 'outside');
+        const count = h.requests.length;
+        await h.advance(250);
+        h.session[final ? 'finish' : 'start']();
+        h.fix(h.fixes.at(-1), timestamp); await flush();
+        assert.equal(h.requests.length, count + 1, 'a failed check must not poison the next explicit retry');
+        assert.equal(h.state.errorCode, 'outside', 'the server still applies the same geofence');
+        assert.equal(h.state.locationIssue, null);
+        assert.equal(h.state.active, final);
+    }
+});
 
 test('invalid, future, stale and duplicate fixes are never posted; a new timestamp at unchanged coordinates is accepted', async () => {
     for (const [stamp, code] of [[NaN, 'gps_invalid_timestamp'], [undefined, 'gps_invalid_timestamp'], [105000, 'gps_clock'], [89000, 'gps_stale']]) {

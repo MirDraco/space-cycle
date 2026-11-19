@@ -7,9 +7,13 @@ const TTL_MS = 7200000;
 const timing = Object.freeze({ locationTimeoutMs: 15000, initialTimeoutMs: 30000 });
 const token = () => randomBytes(24).toString('hex');
 
-function fail(code, status = 400) {
+function fail(code, status = 400, position = null) {
     const error = new Error(code);
     error.status = status;
+    if (position) {
+        error.distanceM = Math.round(position.distanceM * 10) / 10;
+        error.accuracyM = position.accuracyM;
+    }
     throw error;
 }
 function exactBody(body, keys) {
@@ -23,7 +27,7 @@ function configured(spaceId) {
 }
 function inside(space, body) {
     const position = assessPosition(space, body);
-    if (position.phase !== 'inside') fail(position.phase, 422);
+    if (position.phase !== 'inside') fail(position.phase, 422, position);
     return position;
 }
 
@@ -102,7 +106,7 @@ function createStayProgress({ visits, now = Date.now, ttlMs = TTL_MS, maxSession
         }
         const position = assessPosition(configured(spaceId), body);
         if (row.status === 'complete') return snapshot(row, time, position);
-        if (position.phase !== 'inside') fail(position.phase, 422);
+        if (position.phase !== 'inside') fail(position.phase, 422, position);
         if (time < row.ready_at) fail('too_early', 409);
         let result;
         try { result = visits.progress.complete(row, time); }

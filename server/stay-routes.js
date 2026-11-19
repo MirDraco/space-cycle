@@ -89,7 +89,13 @@ function createStayRouter({ progress = null, visits = null, verifyToken, limiter
             : error.type === 'entity.too.large' ? 'payload_too_large'
             : error.type === 'entity.parse.failed' ? 'invalid_json' : 'server_error';
         const status = code === 'server_error' ? 500 : error.status || 400;
-        res.status(status).json({ error: code });
+        const body = { error: code };
+        if (status === 422 && ['outside', 'uncertain'].includes(code) &&
+            Number.isFinite(error.distanceM) && Number.isFinite(error.accuracyM)) {
+            body.distanceM = error.distanceM;
+            body.accuracyM = error.accuracyM;
+        }
+        res.status(status).json(body);
     });
     return router;
 }

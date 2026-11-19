@@ -69,7 +69,15 @@
                 }
                 const code = allowedCodes.has(result?.error) ? result.error : 'server_error';
                 if (response.status === 401 && ['invalid_token', 'login_required'].includes(code) && attempt === 0) continue;
-                throw failure(code, response.status);
+                const error = failure(code, response.status);
+                if (response.status === 422 && ['start', 'finish'].includes(action) && ['outside', 'uncertain'].includes(code)) {
+                    const { distanceM, accuracyM } = result;
+                    if (Number.isFinite(distanceM) && distanceM >= 0 && distanceM <= 20100000 &&
+                        Number.isFinite(accuracyM) && accuracyM >= 0 && accuracyM <= 100000) {
+                        error.positionMetrics = { distanceM, accuracyM };
+                    }
+                }
+                throw error;
             }
         };
     }

@@ -78,23 +78,28 @@ test('finish returns stable errors without losing time and persists replay-safe 
     t.after(() => visits.close());
     const progress = createStayProgress({ visits, now: () => time });
     const { post } = await api(t, { visits, progress });
-    for (const [body, error] of [[{ ...startBody, latitude: 0, longitude: 0 }, 'outside'], [{ ...startBody, accuracy: 101 }, 'uncertain']]) {
+    const far = { ...center, latitude: center.latitude + 0.001 };
+    const outsideReport = { error: 'outside', distanceM: 111.2, accuracyM: 5 };
+    const accuracyReport = { error: 'uncertain', distanceM: 0, accuracyM: 101 };
+    for (const [body, expected] of [[{ spaceId, ...far }, outsideReport], [{ ...startBody, accuracy: 101 }, accuracyReport]]) {
         const response = await post('', body);
         assert.equal(response.status, 422);
-        assert.deepEqual(await response.json(), { error });
+        assert.equal(response.headers.get('cache-control'), 'no-store');
+        assert.deepEqual(await response.json(), expected);
     }
+    assert.equal((await (await post('/resume', { spaceId })).json()).phase, 'idle');
     const start = await (await post('', startBody)).json();
     const body = { ...center, challenge: start.challenge };
     const early = await post(`/${start.id}/finish`, body);
     assert.equal(early.status, 409);
     assert.deepEqual(await early.json(), { error: 'too_early' });
     time += 60000;
-    const outside = await post(`/${start.id}/finish`, { ...body, latitude: 0, longitude: 0 });
+    const outside = await post(`/${start.id}/finish`, { ...body, ...far });
     assert.equal(outside.status, 422);
-    assert.deepEqual(await outside.json(), { error: 'outside' });
+    assert.deepEqual(await outside.json(), outsideReport);
     const uncertain = await post(`/${start.id}/finish`, { ...body, accuracy: 101 });
     assert.equal(uncertain.status, 422);
-    assert.deepEqual(await uncertain.json(), { error: 'uncertain' });
+    assert.deepEqual(await uncertain.json(), accuracyReport);
     assert.equal((await (await post('/resume', { spaceId })).json()).phase, 'ready');
     const completeResponse = await post(`/${start.id}/finish`, body);
     assert.equal(completeResponse.status, 200);

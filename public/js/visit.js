@@ -39,6 +39,11 @@
         const seconds = Math.ceil(Math.max(0, milliseconds) / 1000);
         return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
     };
+    const formatMeters = (value, limit, overLimit = false, prefix = '') => {
+        if (!Number.isFinite(value)) return '—';
+        const rounded = Math.round(value * 10) / 10;
+        return overLimit && rounded <= limit ? `${prefix}${limit}m 초과` : `${prefix}${rounded}m`;
+    };
     function stopPainting() {
         if (paintTimer !== null) clearInterval(paintTimer);
         paintTimer = null;
@@ -74,6 +79,9 @@
         stop.disabled = !ready || !online() || latest.cancelling || latest.suspended;
         stop.textContent = latest.phase === 'complete' ? '진행 닫기 (저장 기록 유지)' : '진행 취소';
         let message = latest.message;
+        if (latest.errorCode === 'outside' && latest.accuracyM > place.maxAccuracyM) {
+            message += ' 측정 정확도도 낮아서 실제 위치와 다를 수 있어요.';
+        }
         if (display.stale) message = '진행 유효기간이 끝났어요. 최신 화면에서 계정의 진행을 다시 확인해주세요.';
         else if (hasWait && display.awaitingFinal && !latest.busy && !latest.errorCode && !latest.suspended) {
             message = '대기 시간이 지났어요. 마지막 위치 확인 버튼을 눌러주세요. 아직 완료·저장 전이에요.';
@@ -92,8 +100,9 @@
         latest = state;
         status.dataset.phase = state.phase; status.dataset.errorCode = state.errorCode || '';
         element('visit-condition').textContent = `${place.area || place.name} · 테스트 장소\n반경 ${place.radiusM}m·정확도 ${place.maxAccuracyM}m 이하로 시작 위치와 종료 위치, 서버 기준 ${state.requiredMs / 1000}초 대기 시간을 확인해요.`;
-        element('visit-distance').textContent = state.distanceM === null ? '—' : `${Math.round(state.distanceM)}m`;
-        element('visit-accuracy').textContent = state.accuracyM === null ? '—' : `±${Math.round(state.accuracyM)}m`;
+        element('visit-distance').textContent = formatMeters(state.distanceM, place.radiusM, state.errorCode === 'outside');
+        element('visit-accuracy').textContent = formatMeters(state.accuracyM, place.maxAccuracyM,
+            state.errorCode === 'uncertain' || state.accuracyM > place.maxAccuracyM, '±');
         paintDiagnostics(state);
         if (state.active && !state.suspended && visible() && paintTimer === null) paintTimer = setInterval(paint, 250);
         else if (!state.active || state.suspended || !visible()) stopPainting();

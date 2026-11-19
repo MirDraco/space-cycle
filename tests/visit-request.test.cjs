@@ -32,6 +32,31 @@ test('start/finish transport accepts only canonical routes, exact bounded payloa
  const x=setup([reply(204,null)]);await assert.rejects(x.request('/api/stays/resume',{spaceId:'indoor-01'}),e=>e.code==='invalid_response');
 });
 
+test('only valid numeric position details on start or finish 422 reach the client', async () => {
+ const position = { latitude: 36.7, longitude: 126.9, accuracy: 5 };
+ const body = { spaceId: 'indoor-01', ...position };
+ const metrics = { distanceM: 111.2, accuracyM: 5 };
+ const valid = setup([reply(422, { error: 'outside', ...metrics, details: 'PRIVATE' })]);
+ await assert.rejects(valid.request('/api/stays', body), error => {
+  assert.equal(error.code, 'outside');
+  assert.deepEqual(error.positionMetrics, metrics);
+  assert.equal(error.details, undefined);
+  return true;
+ });
+ for (const [status, result] of [[422, { error: 'outside', distanceM: '111.2', accuracyM: 5 }],
+  [422, { error: 'uncertain', distanceM: 5, accuracyM: 100001 }],
+  [422, { error: 'outside', distanceM: -1, accuracyM: 5 }],
+  [422, { error: 'outside', distanceM: null, accuracyM: 5 }],
+  [422, { error: 'outside', distanceM: 5, accuracyM: Infinity }],
+  [422, { error: 'outside' }], [500, { error: 'outside', ...metrics }],
+  [422, { error: 'invalid_position', ...metrics }]]) {
+  const x = setup([reply(status, result)]);
+  await assert.rejects(x.request('/api/stays', body), error => error.code === result.error && error.positionMetrics === undefined);
+ }
+ const x = setup([reply(422, { error: 'outside', ...metrics })]);
+ await assert.rejects(x.request('/api/stays/resume', { spaceId: 'indoor-01' }), error => error.positionMetrics === undefined);
+});
+
 test('transport rechecks the original owner after JSON parsing failures and rejects non-204 cancel success', async()=>{
  for(const abort of [false,true]){
   const x=setup([]),controller=new AbortController();let reject;

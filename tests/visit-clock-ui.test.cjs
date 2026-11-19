@@ -181,6 +181,39 @@ test('the explicit cancel button remains usable while GPS is pending and clears 
     h.fix(pending); await flush(); assert.equal(h.requests.length, 1);
 });
 
+test('rejected start and final positions show distance and accuracy from the rejected sample', async () => {
+    for (const [code, distanceM, accuracyM, shownDistance, shownAccuracy] of [
+        ['outside', 111.2, 18, '111.2m', '±18m'], ['outside', 75.1, 50.5, '75.1m', '±50.5m'],
+        ['outside', 75, 50.01, '75m 초과', '±50m 초과'], ['uncertain', 25, 130, '25m', '±130m'],
+    ]) {
+        for (const final of [false, true]) {
+            const accepted = final ? snapshot({ phase: 'ready', elapsedMs: 60000 }) : idle();
+            const h = harness({ respond: call => call.route.endsWith('/resume') ? accepted
+                : callResult(422, { error: code, distanceM, accuracyM, privateField: 'DO NOT SHOW' }) });
+            await flush();
+            h.elements.get(final ? 'visit-finish' : 'visit-start').click(); h.fix(); await flush();
+            assert.equal(h.elements.get('visit-distance').textContent, shownDistance);
+            assert.equal(h.elements.get('visit-accuracy').textContent, shownAccuracy);
+            const status = h.elements.get('visit-status').textContent;
+            assert.match(status, code === 'outside' ? /반경 밖/ : /정확도/);
+            if (code === 'outside' && accuracyM > 50) assert.match(status, /정확도도 낮/);
+            assert.doesNotMatch(status, /DO NOT SHOW|\(outside\)|\(uncertain\)/);
+            if (final) assert.equal(h.elements.get('visit-timer').textContent, '00:00');
+        }
+    }
+});
+
+test('a rejection without metrics does not show previous start numbers as the rejected finish', async () => {
+    const h = harness({ respond: call => call.route.endsWith('/resume') ? snapshot({ phase: 'ready', elapsedMs: 60000 })
+        : callResult(422, { error: 'outside' }) });
+    await flush();
+    assert.equal(h.elements.get('visit-distance').textContent, '0m');
+    h.elements.get('visit-finish').click(); h.fix(); await flush();
+    assert.equal(h.elements.get('visit-distance').textContent, '—');
+    assert.equal(h.elements.get('visit-accuracy').textContent, '—');
+    assert.equal(h.elements.get('visit-timer').textContent, '00:00');
+});
+
 test('uncertain, outside and transient final HTTP errors keep zero ready for another deliberate click', async () => {
     for (const [code, status] of [['uncertain', 422], ['outside', 422], ['save_failed', 503], ['too_early', 409], ['rate_limited', 429]]) {
         const h = harness({ respond: call => call.route.endsWith('/finish') ? callResult(status, { error: code })
