@@ -7,7 +7,7 @@ const { openVisits } = require('../server/visits.js');
 const { getSpace } = require('../public/js/space-data.js');
 
 const spaceId = 'indoor-01';
-const center = { latitude: 36.767780, longitude: 126.933294, accuracy: 5 };
+const center = { latitude: 36.77282799161019, longitude: 126.93329938074858, accuracy: 5 };
 const progressPath = path.join(__dirname, '../server/stay-progress.js');
 function progress(options) {
     assert.ok(fs.existsSync(progressPath), 'durable start/finish progress module must exist');
@@ -78,18 +78,18 @@ test('start requires an enabled server place and a strict inside position before
         rejects(body, 'invalid_payload');
     }
     for (const body of [
-        { ...center, latitude: '36.767780' }, { ...center, latitude: null },
+        { ...center, latitude: '36.77282799161019' }, { ...center, latitude: null },
         { ...center, latitude: NaN }, { ...center, latitude: Infinity },
         { ...center, latitude: 91 }, { ...center, longitude: -181 },
         { ...center, accuracy: -1 }, { ...center, accuracy: 100001 },
         { ...center, accuracy: '5' },
     ]) rejects(body, 'invalid_position');
-    for (const id of ['indoor-02', 'missing']) {
+    for (const id of ['indoor-05', 'missing']) {
         assert.throws(() => store.start(id, center, 'owner'), error => error.message === 'not_configured' && error.status === 404);
     }
     rejects({ ...center, latitude: 0, longitude: 0 }, 'outside', 422);
     rejects({ ...center, accuracy: 101 }, 'uncertain', 422);
-    assert.throws(() => store.resume('indoor-02', 'owner'), error => error.message === 'not_configured' && error.status === 404);
+    assert.throws(() => store.resume('indoor-05', 'owner'), error => error.message === 'not_configured' && error.status === 404);
     assert.equal(store.start(spaceId, { longitude: center.longitude, accuracy: 5, latitude: center.latitude }, 'owner').state.phase, 'waiting');
 });
 
@@ -166,7 +166,7 @@ test('early, missing, wrong-owner, stale, invalid and rejected GPS finishes pres
     for (const body of [null, [], {}, { ...good, now: 1000000 }, { ...good, requiredMs: 1 }, { ...good, uid: 'other' }]) {
         rejects(start.id, body, 'owner', 'invalid_payload');
     }
-    rejects(start.id, { ...good, latitude: '36.767780' }, 'owner', 'invalid_position');
+    rejects(start.id, { ...good, latitude: '36.77282799161019' }, 'owner', 'invalid_position');
     rejects(start.id, good, 'owner', 'too_early', 409);
     time += 59999;
     rejects(start.id, good, 'owner', 'too_early', 409);
@@ -271,15 +271,40 @@ test('indexed expiry and active capacity free abandoned progress without rewardi
     assert.ok(activePlan.some(row => /INDEX.*status/i.test(row.detail)), JSON.stringify(activePlan));
 });
 
+test('an old dorm completion stays on disk but does not count as a lounge visit', t => {
+    const { DatabaseSync } = require('node:sqlite');
+    const filename = disk(t);
+    openVisits(filename).close();
+    const legacy = new DatabaseSync(filename);
+    const insert = legacy.prepare('INSERT INTO visits VALUES(?,?,?)');
+    insert.run('owner', spaceId, 123);
+    insert.run('owner', 'outdoor-05', 456);
+    legacy.close();
+
+    const visits = openVisits(filename);
+    const observer = new DatabaseSync(filename);
+    t.after(() => { observer.close(); visits.close(); });
+    assert.deepEqual(visits.list('owner'), { foundSpaces: ['outdoor-05'], foundSpaceCount: 1 });
+    const completed = { foundSpaces: [spaceId, 'outdoor-05'], foundSpaceCount: 2 };
+    assert.deepEqual(visits.record('owner', spaceId), { ...completed, newlyFound: true });
+    assert.deepEqual(visits.record('owner', spaceId), { ...completed, newlyFound: false });
+    const stored = observer.prepare('SELECT completed_at FROM visits WHERE uid=? AND space_id=?');
+    assert.equal(stored.get('owner', spaceId).completed_at, 123);
+    assert.equal(stored.get('owner', 'outdoor-05').completed_at, 456);
+});
+
 test('additive migration preserves every legacy visit and keeps SQL parameters and raw GPS private', t => {
     const { DatabaseSync } = require('node:sqlite');
     const filename = disk(t);
+    const legacySpaceId = 'outdoor-04';
+    const { latitude, longitude } = getSpace(legacySpaceId);
+    const legacyCenter = { latitude, longitude, accuracy: 5 };
     const legacy = new DatabaseSync(filename);
     legacy.exec(`CREATE TABLE visits(uid TEXT NOT NULL,space_id TEXT NOT NULL,completed_at INTEGER NOT NULL,
         PRIMARY KEY(uid,space_id)) WITHOUT ROWID;`);
     const fixtureRows = [
-        ['owner', spaceId, 123], ['owner', 'outdoor-05', 456],
-        ["quoted' ; DROP TABLE visits; --", spaceId, 789], ['old-account', 'retired-place', 111],
+        ['owner', legacySpaceId, 123], ['owner', 'outdoor-05', 456],
+        ["quoted' ; DROP TABLE visits; --", legacySpaceId, 789], ['old-account', 'retired-place', 111],
     ];
     const insert = legacy.prepare('INSERT INTO visits VALUES(?,?,?)');
     for (const row of fixtureRows) insert.run(...row);
@@ -293,18 +318,18 @@ test('additive migration preserves every legacy visit and keeps SQL parameters a
     let time = 1000;
     const store = progress({ visits, now: () => time });
     const uid = fixtureRows[2][0];
-    const state = store.start(spaceId, center, uid).state;
+    const state = store.start(legacySpaceId, legacyCenter, uid).state;
     time += 60000;
-    assert.equal(store.finish(state.id, { ...center, challenge: state.challenge }, uid).newlyFound, false);
+    assert.equal(store.finish(state.id, { ...legacyCenter, challenge: state.challenge }, uid).newlyFound, false);
     assert.deepEqual(rows(), before);
-    assert.equal(store.resume(spaceId, 'other').phase, 'idle');
+    assert.equal(store.resume(legacySpaceId, 'other').phase, 'idle');
     const columns = observer.prepare('PRAGMA table_info(stay_progress)').all().map(row => row.name).sort();
     assert.deepEqual(columns, ['id','challenge','uid','space_id','started_at','ready_at','expires_at','required_ms','status'].sort());
     assert.equal(observer.prepare('PRAGMA journal_mode').get().journal_mode, 'wal');
     assert.equal(fs.statSync(filename).mode & 0o777, 0o600);
-    assert.equal(JSON.stringify(observer.prepare('SELECT * FROM stay_progress').all()).includes(String(center.latitude)), false);
-    assert.equal(JSON.stringify(observer.prepare('SELECT * FROM stay_progress').all()).includes(String(center.longitude)), false);
-    assert.equal(store.resume(spaceId, uid).accuracyM, null);
+    assert.equal(JSON.stringify(observer.prepare('SELECT * FROM stay_progress').all()).includes(String(latitude)), false);
+    assert.equal(JSON.stringify(observer.prepare('SELECT * FROM stay_progress').all()).includes(String(longitude)), false);
+    assert.equal(store.resume(legacySpaceId, uid).accuracyM, null);
 });
 
 test('a finish that reaches the TTL boundary cannot award using an earlier owner lookup time', t => {
@@ -343,11 +368,12 @@ test('default active capacity is 10000 persisted rows across progress instances'
     t.after(() => { observer.close(); visits.close(); });
     const store = progress({ visits, now: () => 0 });
     const row = store.start(spaceId, center, 'owner').state;
+    const storedId = observer.prepare('SELECT space_id FROM stay_progress WHERE id=?').get(row.id).space_id;
     const insert = observer.prepare(`INSERT INTO stay_progress
         (id,challenge,uid,space_id,started_at,ready_at,expires_at,required_ms,status) VALUES(?,?,?,?,?,?,?,?,?)`);
     observer.exec('BEGIN IMMEDIATE');
     for (let count = 1; count < 10000; count++) {
-        insert.run(count.toString(16).padStart(48, '0'), row.challenge, `capacity-${count}`, spaceId, 0, 60000, 7200000, 60000, 'active');
+        insert.run(count.toString(16).padStart(48, '0'), row.challenge, `capacity-${count}`, storedId, 0, 60000, 7200000, 60000, 'active');
     }
     observer.exec('COMMIT');
     const other = progress({ visits, now: () => 0 });

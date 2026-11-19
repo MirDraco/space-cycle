@@ -10,17 +10,17 @@ function setup() {
     let time = 0;
     const store = createStayStore({ now: () => time });
     const advance = ms => { time += ms; };
-    const center = { latitude: 36.767780, longitude: 126.933294, accuracy: 5 };
+    const center = { latitude: 36.77282799161019, longitude: 126.93329938074858, accuracy: 5 };
     return { store, advance, center, assessPosition };
 }
 
-test('exact supplied coordinates, requested 100m and 60s are enforced by server monotonic time', () => {
+test('exact supplied coordinates, requested 75m and 60s are enforced by server monotonic time', () => {
     const { store, advance, center } = setup();
     let s = store.create('indoor-01');
-    assert.equal(s.space.name, '향설생활관2');
-    assert.equal(s.space.latitude, 36.767780);
-    assert.equal(s.space.longitude, 126.933294);
-    assert.equal(s.space.radiusM, 100);
+    assert.equal(s.space.name, '김승우 라운지');
+    assert.equal(s.space.latitude, 36.77282799161019);
+    assert.equal(s.space.longitude, 126.93329938074858);
+    assert.equal(s.space.radiusM, 75);
     assert.equal(s.requiredMs, 60000);
     s = store.sample(s.id, { challenge: s.challenge, ...center });
     assert.equal(s.phase, 'dwelling');
@@ -55,9 +55,9 @@ test('the measured point must be inside the radius with a bounded GPS error; inv
     const location=require('../public/js/space-data.js').getSpace('indoor-01');
     assert.equal(assessPosition(location,center).phase,'inside');
     const atMeters = (meters, accuracy) => ({ ...center, latitude: center.latitude + meters / 6371000 * 180 / Math.PI, accuracy });
-    assert.equal(assessPosition(location,atMeters(95,50)).phase,'inside','inside the 100m radius with the maximum allowed 50m error');
-    assert.equal(assessPosition(location,atMeters(99.9,5)).phase,'inside');
-    assert.equal(assessPosition(location,atMeters(101,5)).phase,'outside');
+    assert.equal(assessPosition(location,atMeters(74,50)).phase,'inside','inside the 75m radius with the maximum allowed 50m error');
+    assert.equal(assessPosition(location,atMeters(74.9,5)).phase,'inside');
+    assert.equal(assessPosition(location,atMeters(75.1,5)).phase,'outside');
     assert.equal(assessPosition(location,atMeters(20,51)).phase,'uncertain','the separate 50m accuracy limit still applies');
     assert.equal(assessPosition(location,{...center,latitude:center.latitude+0.0010,accuracy:30}).phase,'outside');
     for(const value of [NaN,Infinity,'36.7',null]) assert.throws(()=>assessPosition(location,{...center,latitude:value}));
@@ -67,7 +67,7 @@ test('the measured point must be inside the radius with a bounded GPS error; inv
 
 test('unconfigured spaces, client time fields, replayed challenges and cancelled sessions fail closed', () => {
     const {store,center}=setup();
-    assert.throws(()=>store.create('indoor-02'),/not_configured/);
+    assert.throws(()=>store.create('indoor-05'),/not_configured/);
     assert.throws(()=>store.create('bogus'),/not_configured/);
     const s=store.create('indoor-01');
     assert.throws(()=>store.sample(s.id,{challenge:s.challenge,...center,elapsedMs:60000}),/invalid_payload/);

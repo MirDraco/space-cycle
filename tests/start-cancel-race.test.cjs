@@ -8,7 +8,7 @@ const { createStayRouter } = require('../server/stay-routes.js');
 const { createVisitSession } = require('../public/js/visit-session.js');
 
 const spaceId = 'indoor-01';
-const center = { latitude: 36.767780, longitude: 126.933294, accuracy: 5 };
+const center = { latitude: 36.77282799161019, longitude: 126.93329938074858, accuracy: 5 };
 const attemptId = 'c'.repeat(48);
 function deferred() {
     let resolve;
@@ -40,6 +40,60 @@ async function api(t, { visits = openVisits(':memory:'), verifyToken = async uid
     const base = `http://127.0.0.1:${server.address().port}`;
     return { visits, progress, post: (route, body, uid) => post(base, '/api/stays' + route, body, uid) };
 }
+
+test('an old dorm challenge cannot finish the reassigned lounge over HTTP', async t => {
+    const { DatabaseSync } = require('node:sqlite');
+    const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lounge-reassignment-'));
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+    const filename = path.join(dir, 'visits.sqlite');
+    openVisits(filename).close();
+    const legacy = new DatabaseSync(filename);
+    const oldId = 'a'.repeat(48), oldChallenge = 'b'.repeat(48);
+    const oldProgress = [oldId, oldChallenge, 'owner', spaceId, 1000, 61000, 7201000, 60000, 'active'];
+    legacy.prepare('INSERT INTO stay_progress VALUES(?,?,?,?,?,?,?,?,?)').run(...oldProgress);
+    const insertVisit = legacy.prepare('INSERT INTO visits VALUES(?,?,?)');
+    insertVisit.run('owner', spaceId, 123);
+    insertVisit.run('owner', 'outdoor-05', 456);
+    legacy.close();
+
+    let time = 61000;
+    const fixture = await api(t, { visits: openVisits(filename), now: () => time });
+    const stale = await fixture.post(`/${oldId}/finish`, { ...center, challenge: oldChallenge });
+    assert.equal(stale.status, 410);
+    assert.deepEqual(stale.body, { error: 'session_missing' });
+    assert.equal((await fixture.post(`/${oldId}/cancel`, { challenge: oldChallenge })).status, 410);
+    const idle = await fixture.post('/resume', { spaceId });
+    assert.equal(idle.status, 200);
+    assert.equal(idle.body.spaceId, spaceId);
+    assert.equal(idle.body.phase, 'idle');
+
+    const start = await fixture.post('', { spaceId, ...center, attemptId });
+    assert.equal(start.status, 201);
+    assert.equal(start.body.spaceId, spaceId);
+    assert.equal(start.body.phase, 'waiting');
+    assert.notEqual(start.body.id, oldId);
+    assert.notEqual(start.body.challenge, oldChallenge);
+    time += start.body.requiredMs;
+    const finish = await fixture.post(`/${start.body.id}/finish`, { ...center, challenge: start.body.challenge });
+    assert.equal(finish.status, 200);
+    assert.equal(finish.body.spaceId, spaceId);
+    assert.equal(finish.body.persisted, true);
+    assert.equal(finish.body.newlyFound, true);
+    assert.equal(finish.body.foundSpaceCount, 2);
+    assert.deepEqual(fixture.visits.list('owner'), { foundSpaces: [spaceId, 'outdoor-05'], foundSpaceCount: 2 });
+
+    const observer = new DatabaseSync(filename);
+    t.after(() => observer.close());
+    const saved = observer.prepare('SELECT * FROM stay_progress WHERE id=?');
+    assert.deepEqual(Object.values(saved.get(oldId)), oldProgress);
+    const storedId = saved.get(start.body.id).space_id;
+    assert.notEqual(storedId, spaceId);
+    assert.equal(observer.prepare('SELECT space_id FROM stay_start_attempts WHERE attempt_id=?').get(attemptId).space_id, storedId);
+    const completion = observer.prepare('SELECT completed_at FROM visits WHERE uid=? AND space_id=?');
+    assert.equal(completion.get('owner', spaceId).completed_at, 123);
+    assert.equal(completion.get('owner', storedId).completed_at, time);
+});
 
 test('real delayed authentication cannot create progress after the client acknowledges pending-start cancellation', { timeout: 5000 }, async t => {
     const entered = deferred(), release = deferred(), originalReply = deferred();
@@ -195,10 +249,11 @@ test('default intent capacity is 10000 durable rows and cannot evict an unexpire
     t.after(() => { observer.close(); visits.close(); });
     const store = createStayProgress({ visits, now: () => 0 });
     store.abandon(spaceId, attemptId, 'owner');
+    const storedId = observer.prepare('SELECT space_id FROM stay_start_attempts WHERE uid=? AND attempt_id=?').get('owner', attemptId).space_id;
     const insert = observer.prepare('INSERT INTO stay_start_attempts VALUES(?,?,?,?,?,?)');
     observer.exec('BEGIN IMMEDIATE');
     for (let count = 1; count < 10000; count++) {
-        insert.run(`fixture-${count}`, count.toString(16).padStart(48, '0'), spaceId, null, 1, 7200000);
+        insert.run(`fixture-${count}`, count.toString(16).padStart(48, '0'), storedId, null, 1, 7200000);
     }
     observer.exec('COMMIT');
     assert.throws(() => store.abandon(spaceId, 'd'.repeat(48), 'overflow'), error => error.message === 'capacity' && error.status === 429);

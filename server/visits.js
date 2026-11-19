@@ -1,7 +1,14 @@
 const { DatabaseSync } = require('node:sqlite');
 const fs = require('node:fs');
 const path = require('node:path');
-const { getSpace } = require('../public/js/space-data.js');
+const { all } = require('../public/js/space-data.js');
+
+// Public IDs can be reassigned; keep the lounge separate from older dorm rows.
+const storedByPublicId = new Map(all.filter(space => space.enabled)
+    .map(({ id }) => [id, id === 'indoor-01' ? 'indoor-01-kim-seungwoo' : id]));
+const publicByStoredId = new Map([...storedByPublicId].map(([id, storedId]) => [storedId, id]));
+const storageIdFor = spaceId => storedByPublicId.get(spaceId);
+const publicIdFor = storedId => publicByStoredId.get(storedId);
 
 function validUser(uid) {
     if (typeof uid !== 'string' || !uid || uid.length > 128) throw new Error('invalid_user');
@@ -47,13 +54,14 @@ function openVisits(filename) {
     const query = db.prepare('SELECT space_id FROM visits WHERE uid=? ORDER BY space_id');
     function list(uid) {
         validUser(uid);
-        const foundSpaces = query.all(uid).map(row => row.space_id).filter(id => getSpace(id));
+        const foundSpaces = query.all(uid).map(row => publicIdFor(row.space_id)).filter(Boolean);
         return { foundSpaces, foundSpaceCount: foundSpaces.length };
     }
     function record(uid, spaceId) {
         validUser(uid);
-        if (!getSpace(spaceId)?.enabled) throw new Error('not_configured');
-        const result = insert.run(uid, spaceId, Date.now());
+        const storedId = storageIdFor(spaceId);
+        if (!storedId) throw new Error('not_configured');
+        const result = insert.run(uid, storedId, Date.now());
         return { ...list(uid), newlyFound: result.changes === 1 };
     }
     const findProgress = db.prepare('SELECT * FROM stay_progress WHERE uid=? AND space_id=?');
@@ -159,4 +167,4 @@ function defaultVisits() {
     if (!instance) instance = openVisits(process.env.SPACE_CYCLE_DB || path.join(__dirname, '..', 'data', 'visits.sqlite'));
     return instance;
 }
-module.exports = { openVisits, defaultVisits };
+module.exports = { openVisits, defaultVisits, storageIdFor, publicIdFor };

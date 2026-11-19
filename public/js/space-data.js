@@ -6,10 +6,20 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, () => {
     // Enabled places. Coordinates are supplied by the project owner; requiredMs is the test wait.
     // A fix counts when its distance to the center is <= radiusM and its reported accuracy is
-    // <= maxAccuracyM. Radii were measured on site by the project owner; places are >=199m apart.
+    // <= maxAccuracyM. Each check applies to the selected place only.
     const configured = {
-        'indoor-01': { name: '향설생활관2', area: '내부 공간 01 · GPS 체류 테스트',
-            latitude: 36.767780, longitude: 126.933294, radiusM: 100, requiredMs: 60000, maxAccuracyM: 50 },
+        'indoor-01': { name: '김승우 라운지', area: '유리벽 쉼터',
+            latitude: 36.77282799161019, longitude: 126.93329938074858, radiusM: 75, requiredMs: 60000, maxAccuracyM: 50,
+            photo: '/images/spaces/in01.jpg' },
+        'indoor-02': { name: '오월 라운지', area: '통유리 라운지',
+            latitude: 36.77145784931604, longitude: 126.93251089396017, radiusM: 75, requiredMs: 60000, maxAccuracyM: 50,
+            photo: '/images/spaces/in02.jpg' },
+        'indoor-03': { name: '학생 회관 2층', area: '계단 옆 쉼터',
+            latitude: 36.76998389914673, longitude: 126.93142010481328, radiusM: 75, requiredMs: 60000, maxAccuracyM: 50,
+            photo: '/images/spaces/in03.jpg' },
+        'indoor-04': { name: '공학관 편의점 옆 휴게공간', area: '공학관 편의점 옆',
+            latitude: 36.769281474235655, longitude: 126.932199181013, radiusM: 75, requiredMs: 60000, maxAccuracyM: 50,
+            photo: '/images/spaces/in04.jpg' },
         'outdoor-01': { name: '학예관·멀티미디어관 앞 야외 광장', area: '학예관과 멀티미디어관 앞',
             latitude: 36.76947221339854, longitude: 126.93489279497715, radiusM: 40, requiredMs: 60000, maxAccuracyM: 20,
             photo: '/images/spaces/out01.jpg' },
@@ -45,7 +55,8 @@
     const fromCode = code => spaces.find(space => space.code === code) || null;
     const destination = id => {
         const space = getSpace(id);
-        return space ? `${space.enabled ? '/visit' : '/spaces'}?space=${space.id}` : null;
+        // Keep an old, unassigned QR code usable as a link to the space list.
+        return space ? (space.enabled ? `/visit?space=${space.id}` : '/spaces') : null;
     };
     return Object.freeze({ all: Object.freeze(spaces), getSpace, fromCode, destination });
 });

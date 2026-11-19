@@ -25,7 +25,7 @@ test('five outdoor places use the supplied coordinates and radii, a photo and a 
     }
 });
 
-test('each outdoor place accepts its own center and no position can satisfy two places', () => {
+test('each outdoor place accepts its own center and excludes all other place centers', () => {
     const enabled = spaces.all.filter(place => place.enabled);
     for (const place of enabled.filter(p => p.category === 'outdoor')) {
         assert.equal(assessPosition(place, { latitude: place.latitude, longitude: place.longitude, accuracy: 10 }).phase, 'inside', place.id);

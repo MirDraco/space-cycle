@@ -9,7 +9,7 @@ const { createStayProgress } = require('../server/stay-progress.js');
 const { openVisits } = require('../server/visits.js');
 
 const spaceId = 'indoor-01';
-const center = { latitude: 36.767780, longitude: 126.933294, accuracy: 5 };
+const center = { latitude: 36.77282799161019, longitude: 126.93329938074858, accuracy: 5 };
 const startBody = { spaceId, ...center };
 const verifyToken = async token => {
     if (!/^user-[A-Z0-9-]+$/.test(token)) throw Error('invalid_token');
@@ -191,7 +191,7 @@ test('start resume finish cancel reject all extra fields and invalid numeric coo
     for (const body of [{ spaceId }, { ...startBody, complete: true }, { ...startBody, requiredMs: 1 }, { ...startBody, elapsedMs: 60000 }]) {
         assert.equal((await post('', body)).status, 400);
     }
-    for (const coordinates of [{ latitude: '36.767780' }, { latitude: null }, { latitude: 91 }, { longitude: -181 }, { accuracy: '5' }, { accuracy: -1 }]) {
+    for (const coordinates of [{ latitude: '36.77282799161019' }, { latitude: null }, { latitude: 91 }, { longitude: -181 }, { accuracy: '5' }, { accuracy: -1 }]) {
         const response = await post('', { ...startBody, ...coordinates });
         assert.equal(response.status, 400);
         assert.deepEqual(await response.json(), { error: 'invalid_position' });

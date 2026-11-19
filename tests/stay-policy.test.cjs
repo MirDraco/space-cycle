@@ -36,7 +36,7 @@ test('the advertised server gap is enforced at its boundary and long silence can
     const { readStayPolicy } = policy();
     const { createStayStore } = require('../server/stay-store.js'); let time = 0;
     const store = createStayStore({ now: () => time, policy: readStayPolicy({}) });
-    const position = { latitude: 36.7678561856971, longitude: 126.933492079991, accuracy: 5 };
+    const position = { latitude: 36.77282799161019, longitude: 126.93329938074858, accuracy: 5 };
     let state = store.create('indoor-01'); state = store.sample(state.id, { ...position, challenge: state.challenge });
     time = 25000; state = store.sample(state.id, { ...position, challenge: state.challenge });
     assert.equal(state.elapsedMs, 25000); assert.equal(state.reason, null);

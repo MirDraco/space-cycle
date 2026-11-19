@@ -1,6 +1,7 @@
 const { randomBytes } = require('node:crypto');
 const { getSpace } = require('../public/js/space-data.js');
 const { assessPosition } = require('./stay-store.js');
+const { storageIdFor, publicIdFor } = require('./visits.js');
 
 const TTL_MS = 7200000;
 const timing = Object.freeze({ locationTimeoutMs: 15000, initialTimeoutMs: 30000 });
@@ -36,7 +37,7 @@ function createStayProgress({ visits, now = Date.now, ttlMs = TTL_MS, maxSession
     function snapshot(row, time, position = null, newlyFound = false) {
         const complete = row.status === 'complete';
         return {
-            mode: 'start_finish', id: row.id, challenge: row.challenge, spaceId: row.space_id,
+            mode: 'start_finish', id: row.id, challenge: row.challenge, spaceId: publicIdFor(row.space_id),
             phase: complete ? 'complete' : time >= row.ready_at ? 'ready' : 'waiting',
             elapsedMs: complete ? row.required_ms : Math.min(row.required_ms, Math.max(0, Math.floor(time - row.started_at))),
             requiredMs: row.required_ms, expiresInMs: Math.max(0, row.expires_at - time),
@@ -49,7 +50,7 @@ function createStayProgress({ visits, now = Date.now, ttlMs = TTL_MS, maxSession
     function resume(spaceId, owner) {
         const space = configured(spaceId);
         const time = now();
-        const row = visits.progress.find(owner, spaceId);
+        const row = visits.progress.find(owner, storageIdFor(spaceId));
         if (row?.expires_at <= time) {
             visits.progress.cleanup(time);
             fail('session_missing', 410);
@@ -64,7 +65,7 @@ function createStayProgress({ visits, now = Date.now, ttlMs = TTL_MS, maxSession
         const position = inside(space, body);
         const time = now();
         const row = {
-            id: token(), challenge: token(), uid: owner, space_id: space.id,
+            id: token(), challenge: token(), uid: owner, space_id: storageIdFor(space.id),
             started_at: time, ready_at: time + space.requiredMs, expires_at: time + ttlMs,
             required_ms: space.requiredMs, status: 'active',
         };
@@ -86,18 +87,20 @@ function createStayProgress({ visits, now = Date.now, ttlMs = TTL_MS, maxSession
             fail('session_missing', 410);
         }
         visits.progress.cleanup(time);
+        const spaceId = publicIdFor(row.space_id);
+        if (!spaceId) fail('session_missing', 410);
         if (typeof challenge !== 'string' || challenge !== row.challenge) fail('stale_challenge', 409);
-        return row;
+        return { row, spaceId };
     }
     function finish(id, body, owner) {
         exactBody(body, 'accuracy,challenge,latitude,longitude');
-        const row = owned(id, owner, body.challenge);
+        const { row, spaceId } = owned(id, owner, body.challenge);
         const time = now();
         if (time >= row.expires_at) {
             visits.progress.cleanup(time);
             fail('session_missing', 410);
         }
-        const position = assessPosition(configured(row.space_id), body);
+        const position = assessPosition(configured(spaceId), body);
         if (row.status === 'complete') return snapshot(row, time, position);
         if (position.phase !== 'inside') fail(position.phase, 422);
         if (time < row.ready_at) fail('too_early', 409);
@@ -113,7 +116,7 @@ function createStayProgress({ visits, now = Date.now, ttlMs = TTL_MS, maxSession
     }
     function abandon(spaceId, attemptId, owner) {
         configured(spaceId); validAttempt(attemptId);
-        try { visits.progress.abandon(owner, spaceId, attemptId, now(), maxAttempts); }
+        try { visits.progress.abandon(owner, storageIdFor(spaceId), attemptId, now(), maxAttempts); }
         catch (error) {
             if (['capacity', 'invalid_payload'].includes(error.message) && [400, 429].includes(error.status)) throw error;
             fail('save_failed', 503);
