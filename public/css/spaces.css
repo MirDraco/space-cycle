@@ -109,14 +109,8 @@
     content: "";
 }
 
-.slot-meta {
-    display: grid;
-    justify-items: center;
-    gap: 7px;
-    color: var(--muted);
-}
-
 .slot-chevron {
+    color: var(--muted);
     transition: transform 150ms ease;
 }
 
@@ -152,16 +146,6 @@
     font-size: 12px;
     line-height: 1.6;
     word-break: keep-all;
-}
-
-.slot-status {
-    padding: 5px 8px;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    color: var(--muted);
-    font-size: 10px;
-    font-weight: 500;
-    white-space: nowrap;
 }
 
 @media (max-width: 360px) {

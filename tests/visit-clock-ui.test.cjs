@@ -95,6 +95,16 @@ test('mobile view offers the final button and honest start/finish, account progr
     assert.match(html, /class="app-shell"/); assert.match(html, /\/css\/visit.css/);
 });
 
+test('visit conditions show the place and its limits without a trial label', async () => {
+    const h = harness(); await flush();
+    const condition = h.elements.get('visit-condition').textContent;
+    assert.match(condition, /^유리벽 쉼터\n/);
+    assert.match(condition, /75m/);
+    assert.match(condition, /50m/);
+    assert.match(condition, /60초/);
+    assert.doesNotMatch(condition, /테스트|향설/);
+});
+
 test('UI restores without GPS, ticks silently, enables an explicit final button at zero and refreshes count only on saved completion', async () => {
     const h = harness(); await flush();
     assert.deepEqual(h.requests.map(call => call.route), ['/api/stays/resume']); assert.equal(h.fixes.length, 0);

@@ -29,7 +29,7 @@
     if (selection.spaceId) {
         document.getElementById('scan-context').hidden = false;
         document.getElementById('selected-space').textContent = policy.spaceLabel(selection.spaceId);
-        document.querySelector('#scan-context .status-pill').textContent = window.SpaceCycleSpaces.getSpace(selection.spaceId).enabled ? '체류 테스트' : '등록 예정';
+        document.querySelector('#scan-context .status-pill').textContent = window.SpaceCycleSpaces.getSpace(selection.spaceId).enabled ? '방문 인증' : '등록 예정';
         document.getElementById('scanner-back').href = `/spaces?space=${selection.spaceId}`;
     }
     const canvas = document.createElement('canvas');
@@ -79,7 +79,7 @@
                 description.textContent = configured
                     ? `${policy.spaceLabel(decoded.spaceId)}의 QR이에요. 다음 화면에서 로그인하고 위치 권한을 허용한 뒤 반경 ${space.radiusM}m 안에서 1분 동안 머물러보세요. 완료한 공간은 한 번만 세요.`
                     : `${policy.spaceLabel(decoded.spaceId)}의 링크예요. 아직 등록 예정인 공간이므로 방문 인증이나 보상은 진행되지 않아요.`;
-                link.textContent = configured ? '위치·체류 테스트로 이동' : '공간 정보 보기';
+                link.textContent = configured ? '방문 인증 화면으로 이동' : '공간 정보 보기';
                 link.href = decoded.path;
                 link.hidden = false;
             } else if (decoded.status === 'mismatch') {

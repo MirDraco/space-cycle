@@ -1,10 +1,10 @@
-/* Public place configuration. Exact test coordinates supplied by the project owner. */
+/* Public configuration for registered places. */
 (function (root, factory) {
     const api = factory();
     if (typeof module === 'object' && module.exports) module.exports = api;
     else root.SpaceCycleSpaces = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, () => {
-    // Enabled places. Coordinates are supplied by the project owner; requiredMs is the test wait.
+    // requiredMs is the time required between the start and final location checks.
     // A fix counts when its distance to the center is <= radiusM and its reported accuracy is
     // <= maxAccuracyM. Each check applies to the selected place only.
     const configured = {

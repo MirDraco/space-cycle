@@ -113,7 +113,7 @@ test('spaces shows only the four registered indoor and five registered outdoor p
     assert.doesNotMatch(html, /등록 예정|향설생활관2/);
 });
 
-test('all nine cards include their actual photo, name, test radius and selected QR entry', async () => {
+test('all nine cards include their actual photo, name, visit conditions and selected QR entry', async () => {
     const html = await (await fetch(`${base}/spaces`)).text();
     const details = [...html.matchAll(/<details\b[^>]*data-space-slot="([^"]+)"[\s\S]*?<\/details>/g)];
     assert.equal(details.length, 9, 'every registered site must be an expandable disclosure');
@@ -130,7 +130,7 @@ test('all nine cards include their actual photo, name, test radius and selected 
         assert.equal(photoBytes.readUInt16BE(0), 0xFFD8, id);
         assert.equal(photoBytes.includes(Buffer.from('Exif\0\0')), false, id);
         assert.match(markup, /공간 특징/);
-        assert.ok(markup.includes(`반경 ${place.radiusM}m · 1분`), id);
+        assert.ok(markup.includes(`<dt>인증 조건</dt><dd>반경 ${place.radiusM}m · 1분</dd>`), id);
         assert.ok(markup.includes(`href="/qr?space=${id}"`));
         assert.match(markup, /QR 찍으러 가기/);
     }
@@ -149,19 +149,58 @@ test('QR page exposes opt-in camera controls, local decoder and honest privacy/s
         assert.ok(html.includes(`src="${src}?v=`));
     }
     assert.match(html, /서버에 업로드하지/);
-    assert.match(html, /방문 인증이나 보상/);
+    assert.match(html, /QR을 읽는 것만으로는 방문이 기록되지 않아요/);
     assert.doesNotMatch(html, /아직 제공하지 않아요.*스캐너/);
 });
 
-test('home reflects four indoor and five outdoor test places', async () => {
+test('home reflects four registered indoor and five registered outdoor places', async () => {
     const response = await fetch(base);
     assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, /<a href="\/spaces" class="in-first-btn">공간 보기/);
     assert.match(html, /<a href="\/badges" class="in-second-btn">내 배지 보기/);
-    assert.match(html, /<dt>내부 테스트 공간<\/dt>\s*<dd>4<\/dd>/);
-    assert.match(html, /<dt>외부 테스트 공간<\/dt>\s*<dd>5<\/dd>/);
+    assert.ok(/<dt>내부 공간<\/dt>\s*<dd>4<\/dd>/.test(html), 'home labels four indoor places');
+    assert.ok(/<dt>외부 공간<\/dt>\s*<dd>5<\/dd>/.test(html), 'home labels five outdoor places');
     assert.doesNotMatch(html, /12\+|8\+|>User</);
+});
+
+test('public pages have no trial labels or retired indoor place', async () => {
+    for (const route of ['/', '/spaces', '/qr?space=indoor-01', '/visit?space=indoor-01', '/badges', '/login', '/privacy']) {
+        const response = await fetch(`${base}${route}`);
+        assert.equal(response.status, 200, route);
+        assert.equal(/테스트|향설/.test(await response.text()), false, route);
+    }
+});
+
+test('the QR scanner directs a matched registered place to visit verification', () => {
+    const elements = new Map();
+    const getElementById = id => {
+        if (!elements.has(id)) elements.set(id, { dataset: {}, addEventListener() {}, focus() {} });
+        return elements.get(id);
+    };
+    const pill = {};
+    let onCode;
+    const window = {
+        location: { search: '?space=indoor-01', origin: 'https://spacecycle.space' },
+        isSecureContext: true,
+        SpaceCycleSpaces: spaces,
+        SpaceCycleQrPolicy: require('../public/js/qr-policy.js'),
+        SpaceCycleCamera: { createCameraSession(options) { onCode = options.onCode; return {}; } },
+        jsQR() {}, addEventListener() {},
+    };
+    vm.runInNewContext(fs.readFileSync(path.join(root, 'public/js/qr-scanner.js'), 'utf8'), {
+        window,
+        navigator: { mediaDevices: { getUserMedia() {} } },
+        document: { getElementById, querySelector: () => pill,
+            createElement: () => ({ getContext: () => ({}) }), addEventListener() {} },
+    });
+    assert.equal(getElementById('selected-space').textContent, '김승우 라운지');
+    onCode('https://spacecycle.space/s/in01');
+    const link = getElementById('result-link');
+    assert.equal(getElementById('scan-result').dataset.result, 'matched');
+    assert.equal(link.href, '/visit?space=indoor-01');
+    assert.equal(link.hidden, false);
+    assert.deepEqual([pill.textContent, link.textContent], ['방문 인증', '방문 인증 화면으로 이동']);
 });
 
 test('printed short URLs route to a safe destination and the GPS visit page loads', async () => {

@@ -99,7 +99,7 @@
         if (uiGeneration !== run || runOwner !== owner || user()?.uid !== owner) return;
         latest = state;
         status.dataset.phase = state.phase; status.dataset.errorCode = state.errorCode || '';
-        element('visit-condition').textContent = `${place.area || place.name} · 테스트 장소\n반경 ${place.radiusM}m·정확도 ${place.maxAccuracyM}m 이하로 시작 위치와 종료 위치, 서버 기준 ${state.requiredMs / 1000}초 대기 시간을 확인해요.`;
+        element('visit-condition').textContent = `${place.area || place.name}\n시작과 마지막 위치가 반경 ${place.radiusM}m 이내이고 GPS 오차가 ${place.maxAccuracyM}m 이하여야 해요. 두 위치 확인 사이에 서버 기준 ${state.requiredMs / 1000}초가 지나야 해요.`;
         element('visit-distance').textContent = formatMeters(state.distanceM, place.radiusM, state.errorCode === 'outside');
         element('visit-accuracy').textContent = formatMeters(state.accuracyM, place.maxAccuracyM,
             state.errorCode === 'uncertain' || state.accuracyM > place.maxAccuracyM, '±');
