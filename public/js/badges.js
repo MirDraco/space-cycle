@@ -2,28 +2,36 @@
 (() => {
     const board = document.getElementById('badge-board');
     if (!board) return;
-    const cards = [...board.querySelectorAll('[data-badge]')];
+    const groups = [...board.querySelectorAll('[data-badge-group]')].map(section => ({
+        cards: [...section.querySelectorAll('[data-badge]')],
+        progress: section.querySelector('[data-badge-progress]'),
+    }));
+    const total = groups.reduce((sum, group) => sum + group.cards.length, 0);
     const status = document.getElementById('badge-status');
-    const progress = document.getElementById('badge-progress');
     const auth = () => window.SpaceCycleAuth;
 
     function render(found, message) {
-        const earned = new Set(Array.isArray(found) ? found : []);
+        const loaded = Array.isArray(found);
+        const earned = new Set(loaded ? found : []);
         let count = 0;
-        for (const card of cards) {
-            const id = card.dataset.badge, on = earned.has(id);
-            if (on) count++;
-            card.dataset.earned = String(on);
-            const state = card.querySelector('.badge-state');
-            if (state) state.textContent = on ? '획득' : '미획득';
-            const image = card.querySelector('img');
-            if (image) image.alt = `${card.dataset.name} 배지${on ? '' : ' (아직 획득 전)'}`;
+        for (const { cards, progress } of groups) {
+            let groupCount = 0;
+            for (const card of cards) {
+                const on = earned.has(card.dataset.badge);
+                if (on) groupCount++;
+                card.dataset.earned = String(on);
+                const state = card.querySelector('.badge-state');
+                if (state) state.textContent = on ? '획득' : '미획득';
+                const image = card.querySelector('img');
+                if (image) image.alt = `${card.dataset.name} 배지${on ? '' : ' (아직 획득 전)'}`;
+            }
+            if (progress) progress.textContent = `${loaded ? groupCount : '–'} / ${cards.length}`;
+            count += groupCount;
         }
-        if (progress) progress.textContent = Array.isArray(found) ? `${count} / ${cards.length}` : `– / ${cards.length}`;
-        if (status) status.textContent = message ?? (count === cards.length
-            ? '외부 공간 배지를 모두 모았어요!'
+        if (status) status.textContent = message ?? (total && count === total
+            ? '내부·외부 공간 배지를 모두 모았어요!'
             : count ? `배지 ${count}개를 모았어요. 남은 공간도 다녀와 보세요.`
-                : '아직 모은 배지가 없어요. 외부 공간에서 체류를 완료하면 컬러로 바뀌어요.');
+                : '아직 모은 배지가 없어요. 공간에서 체류를 완료하면 컬러로 바뀌어요.');
     }
 
     function sync() {
@@ -35,11 +43,10 @@
     }
 
     window.addEventListener('spacecycle:authchange', sync);
-    window.addEventListener('spacecycle:spaceschange', event => {
-        if (auth()?.getUser()) render(event.detail?.foundSpaces);
-    });
+    window.addEventListener('spacecycle:spaceschange', sync);
     window.addEventListener('spacecycle:spaceserror', () => {
-        if (auth()?.getUser()) render(null, '모은 배지를 불러오지 못했어요. 연결을 확인하고 새로고침해 주세요.');
+        const api = auth();
+        if (api?.isReady && api.getUser()) render(null, '모은 배지를 불러오지 못했어요. 연결을 확인하고 새로고침해 주세요.');
     });
     sync();
 })();

@@ -17,41 +17,71 @@
         <p class="page-eyebrow">MY COLLECTION</p>
         <h1 class="page-title">배지보기</h1>
         <p class="page-description">공간에서의 경험을 모아둘 곳이에요.</p>
-        <section class="info-panel badge-board" id="badge-board" aria-labelledby="badge-heading">
-            <div class="badge-board-head">
-                <h2 id="badge-heading">외부 공간 배지</h2>
-                <span class="status-pill" id="badge-progress">– / 5</span>
-            </div>
-            <p class="badge-status" id="badge-status" role="status" aria-live="polite">로그인 상태를 확인하는 중이에요.</p>
-            <ul class="badge-grid">
-                <li class="badge-card" data-badge="outdoor-01" data-name="학예관·멀티미디어관 앞 야외 광장" data-earned="false">
-                    <img src="/images/badges/out01.webp" alt="학예관·멀티미디어관 앞 야외 광장 배지 (아직 획득 전)" width="512" height="512" decoding="async">
-                    <span class="badge-name">학예관·멀티미디어관 앞 야외 광장</span>
-                    <span class="badge-state">미획득</span>
-                </li>
-                <li class="badge-card" data-badge="outdoor-02" data-name="SCH미디어랩스관 뒤편 벤치" data-earned="false">
-                    <img src="/images/badges/out02.webp" alt="SCH미디어랩스관 뒤편 벤치 배지 (아직 획득 전)" width="512" height="512" decoding="async">
-                    <span class="badge-name">SCH미디어랩스관 뒤편 벤치</span>
-                    <span class="badge-state">미획득</span>
-                </li>
-                <li class="badge-card" data-badge="outdoor-03" data-name="소운동장·체육관 사이 정자" data-earned="false">
-                    <img src="/images/badges/out03.webp" alt="소운동장·체육관 사이 정자 배지 (아직 획득 전)" width="512" height="512" decoding="async">
-                    <span class="badge-name">소운동장·체육관 사이 정자</span>
-                    <span class="badge-state">미획득</span>
-                </li>
-                <li class="badge-card" data-badge="outdoor-04" data-name="산학협력관–학성사 연결길" data-earned="false">
-                    <img src="/images/badges/out04.webp" alt="산학협력관–학성사 연결길 배지 (아직 획득 전)" width="512" height="512" decoding="async">
-                    <span class="badge-name">산학협력관–학성사 연결길</span>
-                    <span class="badge-state">미획득</span>
-                </li>
-                <li class="badge-card" data-badge="outdoor-05" data-name="대운동장 정면 길" data-earned="false">
-                    <img src="/images/badges/out05.webp" alt="대운동장 정면 길 배지 (아직 획득 전)" width="512" height="512" decoding="async">
-                    <span class="badge-name">대운동장 정면 길</span>
-                    <span class="badge-state">미획득</span>
-                </li>
-            </ul>
-            <p class="page-note">외부 공간에서 체류를 완료하면 해당 배지가 흑백에서 컬러로 바뀌어요.</p>
-        </section>
+        <p class="badge-status" id="badge-status" role="status" aria-live="polite">로그인 상태를 확인하는 중이에요.</p>
+        <div id="badge-board">
+            <section class="info-panel badge-board" data-badge-group="indoor" aria-labelledby="badge-heading-indoor">
+                <div class="badge-board-head">
+                    <h2 id="badge-heading-indoor">내부 공간 배지</h2>
+                    <span class="status-pill" data-badge-progress>– / 4</span>
+                </div>
+                <ul class="badge-grid">
+                    <li class="badge-card" data-badge="indoor-01" data-name="김승우 라운지" data-earned="false">
+                        <img src="/images/badges/in01.webp" alt="김승우 라운지 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                        <span class="badge-name">김승우 라운지</span>
+                        <span class="badge-state">미획득</span>
+                    </li>
+                    <li class="badge-card" data-badge="indoor-02" data-name="오월 라운지" data-earned="false">
+                        <img src="/images/badges/in02.webp" alt="오월 라운지 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                        <span class="badge-name">오월 라운지</span>
+                        <span class="badge-state">미획득</span>
+                    </li>
+                    <li class="badge-card" data-badge="indoor-03" data-name="학생 회관 2층" data-earned="false">
+                        <img src="/images/badges/in03.webp" alt="학생 회관 2층 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                        <span class="badge-name">학생 회관 2층</span>
+                        <span class="badge-state">미획득</span>
+                    </li>
+                    <li class="badge-card" data-badge="indoor-04" data-name="공학관 편의점 옆 휴게공간" data-earned="false">
+                        <img src="/images/badges/in04.webp" alt="공학관 편의점 옆 휴게공간 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                        <span class="badge-name">공학관 편의점 옆 휴게공간</span>
+                        <span class="badge-state">미획득</span>
+                    </li>
+                </ul>
+            </section>
+            <section class="info-panel badge-board" data-badge-group="outdoor" aria-labelledby="badge-heading-outdoor">
+                <div class="badge-board-head">
+                    <h2 id="badge-heading-outdoor">외부 공간 배지</h2>
+                    <span class="status-pill" data-badge-progress>– / 5</span>
+                </div>
+                <ul class="badge-grid">
+                    <li class="badge-card" data-badge="outdoor-01" data-name="학예관·멀티미디어관 앞 야외 광장" data-earned="false">
+                        <img src="/images/badges/out01.webp" alt="학예관·멀티미디어관 앞 야외 광장 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                        <span class="badge-name">학예관·멀티미디어관 앞 야외 광장</span>
+                        <span class="badge-state">미획득</span>
+                    </li>
+                    <li class="badge-card" data-badge="outdoor-02" data-name="SCH미디어랩스관 뒤편 벤치" data-earned="false">
+                        <img src="/images/badges/out02.webp" alt="SCH미디어랩스관 뒤편 벤치 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                        <span class="badge-name">SCH미디어랩스관 뒤편 벤치</span>
+                        <span class="badge-state">미획득</span>
+                    </li>
+                    <li class="badge-card" data-badge="outdoor-03" data-name="소운동장·체육관 사이 정자" data-earned="false">
+                        <img src="/images/badges/out03.webp" alt="소운동장·체육관 사이 정자 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                        <span class="badge-name">소운동장·체육관 사이 정자</span>
+                        <span class="badge-state">미획득</span>
+                    </li>
+                    <li class="badge-card" data-badge="outdoor-04" data-name="산학협력관–학성사 연결길" data-earned="false">
+                        <img src="/images/badges/out04.webp" alt="산학협력관–학성사 연결길 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                        <span class="badge-name">산학협력관–학성사 연결길</span>
+                        <span class="badge-state">미획득</span>
+                    </li>
+                    <li class="badge-card" data-badge="outdoor-05" data-name="대운동장 정면 길" data-earned="false">
+                        <img src="/images/badges/out05.webp" alt="대운동장 정면 길 배지 (아직 획득 전)" width="512" height="512" decoding="async">
+                        <span class="badge-name">대운동장 정면 길</span>
+                        <span class="badge-state">미획득</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+        <p class="page-note">공간에서 체류를 완료하면 해당 배지가 흑백에서 컬러로 바뀌어요.</p>
         <a class="page-action" href="/spaces">공간 둘러보기 <span aria-hidden="true">→</span></a>
     </main>
     <!-- app-navigation -->
